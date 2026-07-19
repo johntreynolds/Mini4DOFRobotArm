@@ -30,8 +30,8 @@ void ServoController::prepServos(float angle)
 
 void ServoController::turnServo(int channel, float angle)
   {
-    angle = constrain(angle, MIN_ANGLE, MAX_ANGLE);
-    int tick = map(angle, MIN_ANGLE, MAX_ANGLE, MIN_TICK[channel], MAX_TICK[channel]);
+    angle = constrain(angle, MIN_ANGLE[channel], MAX_ANGLE[channel]);
+    int tick = map(angle, MIN_ANGLE[channel], MAX_ANGLE[channel], MIN_TICK[channel], MAX_TICK[channel]);
     pwm.setPWM(channel, 0, tick);
   }
 
@@ -81,63 +81,4 @@ void ServoController::moveAllServosPD(float kp, float kd)
       {
         moveServoPD(i, kp, kd);
       }
-  }
-
-//---------------------------RUN TEXT CHANGES PROJECT------------------------------------------
-
-void ServoController::liveCommand(int servoNum, int angle)
-  {
-    // Special command: move ALL servos
-    if (servoNum == 5)
-      {
-        for (int i = 0; i < 5; i++)
-          { 
-            setTargetPD(i, angle);
-          }
-
-        Serial.print("All servos set to ");
-        Serial.println(angle);
-        return;
-      }
-
-    // Normal single-servo command
-    if (servoNum < 0 || servoNum >= 5)
-      {
-        Serial.println("Invalid servo number (must be 1–5, or 6 for ALL)");
-        return;
-      }
-
-    setTargetPD(servoNum, angle);
-
-    Serial.print("Servo ");
-    Serial.print(servoNum);
-    Serial.print(" target set to ");
-    Serial.println(angle);
-  }
-
-void ServoController::readSerialCommands()
-  {
-    if (Serial.available())
-      {
-        String line = Serial.readStringUntil('\n');
-
-        int spaceIndex = line.indexOf(' ');
-        if (spaceIndex == -1)
-          {
-            Serial.println("Format error. Use: servo angle");
-            return;
-          }
-
-        int servoNum = line.substring(0, spaceIndex).toInt();
-        int angle    = line.substring(spaceIndex + 1).toInt();
-
-        liveCommand(servoNum - 1, angle);
-
-      }
-  }
-
-void ServoController::runTextChanges()
-  {
-    readSerialCommands();
-    moveAllServosPD(P, D);
   }

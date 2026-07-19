@@ -1,27 +1,26 @@
 #include "ServoController.h"
-#include "ServoTesting.h"
+#include "ServoTesting.h" 
 
 //SETUP ITEMS
+Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x40);
 bool robotStopped = false;
 ServoController armController;
 ServoTesting testing;
 
-//=====================================START OF PRODUCTION CODE FOR THE ROBOT======================================================
+//=========================START OF PRODUCTION CODE FOR THE ROBOT======================================================
 
 void setup() 
   {
-    
     Serial.begin(9600);
-    armController.begin(50);
-    armController.prepServos(90);
-    
-    //SET SERVO POSITIONS FROM 0 to 180
-    //testing.manualTickStep();
+    testing.beginTest(50);
+    testing.prepServosTest(10);
+
   }
 
 void loop() 
   {
-    armController.runTextChanges();
+    //testing.scanI2C();
+    testing.runServoTravelTuning();
   }
 
 
