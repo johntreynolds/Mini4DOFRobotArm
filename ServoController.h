@@ -7,7 +7,7 @@
 //OBJECT CREATION
 extern Adafruit_PWMServoDriver pwm;
             
-class ServoController 
+class ServoController
     {
         public:
             //READY SERVOS

@@ -16,7 +16,6 @@ void setup()
     //PRODUCTION CODE
     armController.begin(50);
     armController.homeArm();
-    //armController.homeTurret();
    
     //TESTING
     //testing.beginTest(50);

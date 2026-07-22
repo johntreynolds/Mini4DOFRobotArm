@@ -13,7 +13,7 @@ void ServoController::homeArm()
 {
     //SET TIME
     unsigned long now = micros();
-    for (int i = 1 ; i < 5; i++)
+    for (int i = 0 ; i < 5; i++)
       {
         // Initialize PD controller state
         virtualAngle[i] = HOMING[i];
@@ -21,17 +21,6 @@ void ServoController::homeArm()
         lastError[i]    = 0;
         lastTime[i]     = now;
       }
-}
-
-void ServoController::homeTurret()
-{
-    float target = HOMING[0];   // 90 degrees
-    turnServo(0, target);
-    // Sync PD so it doesn't snap afterward
-    virtualAngle[0] = target;
-    targetAngle[0]  = target;
-    lastError[0]    = 0;
-    lastTime[0]     = micros();
 }
 
 //----------------------------------PD Control Methods------------------------------------------------
