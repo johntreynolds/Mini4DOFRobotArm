@@ -7,7 +7,7 @@ void ServoTesting::beginTest(int freq)
   {
       pwm.begin();
       pwm.setPWMFreq(freq);
-  }
+  } 
 
 void ServoTesting::turnServosTest(int channel, float angle)
   {

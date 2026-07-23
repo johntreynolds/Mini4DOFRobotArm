@@ -7,26 +7,33 @@
 //OBJECT CREATION
 extern Adafruit_PWMServoDriver pwm;
             
-class ServoController 
+class ServoController
     {
         public:
             //READY SERVOS
             void begin(int freq);
-            void prepServos(float angle);
+
+            //HOMING SEQUENCE
+            void homeArm();
+            void homeTurret();
 
             //PD Controller
             void turnServo(int channel, float angle);
             void setTargetPD(int channel, float angle);
-            void moveServoPD(int channel, float kp, float kd);
-            void moveAllServosPD(float kp, float kd);
+            void moveServoPD(int channel);
+            void moveAllServosPD();
 
         private:
             //PD Controller
             float targetAngle[5];
             float virtualAngle[5]; 
             float lastError[5];
-            float P = .3;
-            float D = .1;
+            unsigned long lastTime[5]; 
+
+            //P and D GAIN
+            float P = .8;
+            float D = .3;
+        
     };
 
 #endif
