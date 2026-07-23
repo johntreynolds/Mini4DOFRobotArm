@@ -1,5 +1,6 @@
 #include <Wire.h>
 #include "ServoController.h"
+#include "ServoConstants.h"
 
 //--------------------------------------------------READY THE SERVOS-------------------------------------------------
 
@@ -54,6 +55,20 @@ void ServoController::moveServoPD(int channel, float kp, float kd) //kp = propor
     //Find where we are and how far we need to go
     float error = targetAngle[channel] - virtualAngle[channel];
 
+<<<<<<< Updated upstream
+=======
+    //Find Time
+    unsigned long now = micros();
+    float dt = (now - lastTime[channel]) / 1e6;
+
+    if (dt <= 0.0001) 
+      {
+        return; 
+      }
+
+    lastTime[channel] = now;
+
+>>>>>>> Stashed changes
     //Creates math for our P and D values for the PD Controller
     float P = kp * error;
     float D = kd * (error - lastError[channel]);
