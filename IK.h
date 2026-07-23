@@ -1,5 +1,6 @@
 #ifndef IK_h
 #define IK_h
+#include "ServoController.h"
 
 struct ArmAngles
     {
@@ -9,17 +10,16 @@ struct ArmAngles
         float wrist;
         float claw;
         bool isValidLocation;
-    }
+    };
 
-class IV
+class IK
     {
         public:
             //IK Stuff
             ArmAngles solveFullArm(float x, float y, float z, float phi);
-            ArmAngle convertOffsets(ArmAngles &angles, ServoController &controller);
+            ArmAngles convertOffsets(ArmAngles &angles, ServoController &controller);
 
         private:
-
             
     };
 

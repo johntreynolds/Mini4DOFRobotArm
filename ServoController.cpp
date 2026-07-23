@@ -38,16 +38,8 @@ void ServoController::turnServo(int channel, float angle)
 
 void ServoController::setTargetPD(int channel, float angle)
   {
-  //Set Servo Limits
-    if (angle < 0)
-      {
-        angle = 0;
-      } 
-    if (angle > 180) 
-      {
-        angle = 180;
-      }
-    targetAngle[channel] = angle;
+    //Set Servo Limits
+    targetAngle[channel] = constrain(angle, MIN_ANGLE[channel], MAX_ANGLE[channel]);
   }
 
 void ServoController::moveServoPD(int channel, float kp, float kd) //kp = proportional gain; kd = derivative gain
@@ -55,8 +47,6 @@ void ServoController::moveServoPD(int channel, float kp, float kd) //kp = propor
     //Find where we are and how far we need to go
     float error = targetAngle[channel] - virtualAngle[channel];
 
-<<<<<<< Updated upstream
-=======
     //Find Time
     unsigned long now = micros();
     float dt = (now - lastTime[channel]) / 1e6;
@@ -68,7 +58,6 @@ void ServoController::moveServoPD(int channel, float kp, float kd) //kp = propor
 
     lastTime[channel] = now;
 
->>>>>>> Stashed changes
     //Creates math for our P and D values for the PD Controller
     float P = kp * error;
     float D = kd * (error - lastError[channel]);

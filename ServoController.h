@@ -19,21 +19,12 @@ class ServoController
             void moveServoPD(int channel, float kp, float kd);
             void moveAllServosPD(float kp, float kd);
 
-<<<<<<< Updated upstream
         private:
-            //PD Controller
-            float targetAngle[5];
-            float virtualAngle[5]; 
-            float lastError[5];
-            float P = .3;
-            float D = .1;
-=======
-        private: 
             //P and D GAIN
             float P = .8;
             float D = .3;
         
->>>>>>> Stashed changes
+
     };
 
 #endif
