@@ -17,7 +17,7 @@ class IK
         public:
             //IK Stuff
             ArmAngles solveFullArm(float x, float y, float z, float phi);
-            ArmAngles convertOffsets(ArmAngles &angles, ServoController &controller);
+            void processIKSerial(ServoController &controller);
 
         private:
             

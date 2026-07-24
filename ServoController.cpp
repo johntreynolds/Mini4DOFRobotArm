@@ -1,6 +1,5 @@
 #include <Wire.h>
 #include "ServoController.h"
-#include "ServoConstants.h"
 
 //--------------------------------------------------READY THE SERVOS-------------------------------------------------
 
@@ -10,21 +9,20 @@ void ServoController::begin(int freq)
     pwm.setPWMFreq(freq);
   }
 
-void ServoController::prepServos(float angle)
+void ServoController::homeArm()
 {
-    for (int i = 0; i < 5; i++)
+    //SET TIME
+    unsigned long now = micros();
+    for (int i = 0 ; i < 5; i++)
       {
-        // Set physical servo position
-        turnServo(servoArray[i], angle);
-
         // Initialize PD controller state
-        virtualAngle[i] = angle;
-        targetAngle[i]  = angle;
+        virtualAngle[i] = HOMING[i];
+        targetAngle[i]  = HOMING[i];
         lastError[i]    = 0;
+        lastTime[i]     = now;
+        turnServo(i, HOMING[i]);
       }
-
-    Serial.println("Servos initialized.");
-    delay(2000);
+    Serial.println("Arm Homed");
 }
 
 //----------------------------------PD Control Methods------------------------------------------------
@@ -38,11 +36,11 @@ void ServoController::turnServo(int channel, float angle)
 
 void ServoController::setTargetPD(int channel, float angle)
   {
-    //Set Servo Limits
-    targetAngle[channel] = constrain(angle, MIN_ANGLE[channel], MAX_ANGLE[channel]);
+    angle = constrain(angle, MIN_ANGLE[channel], MAX_ANGLE[channel]);
+    targetAngle[channel] = angle;
   }
 
-void ServoController::moveServoPD(int channel, float kp, float kd) //kp = proportional gain; kd = derivative gain
+void ServoController::moveServoPD(int channel)
   {
     //Find where we are and how far we need to go
     float error = targetAngle[channel] - virtualAngle[channel];
@@ -50,27 +48,26 @@ void ServoController::moveServoPD(int channel, float kp, float kd) //kp = propor
     //Find Time
     unsigned long now = micros();
     float dt = (now - lastTime[channel]) / 1e6;
-
-    if (dt <= 0.0001) 
-      {
-        return; 
-      }
-
     lastTime[channel] = now;
 
+    if (dt <= .002f)
+      {
+        dt = 0.002f; 
+      }
+
     //Creates math for our P and D values for the PD Controller
-    float P = kp * error;
-    float D = kd * (error - lastError[channel]);
-    float output = P + D;
+    float pTerm = P * error;
+    float dTerm = D * (error - lastError[channel]) / dt;
+    float output = pTerm + dTerm;
 
     //Limit speed of the PID
-     output = constrain(output, -0.5, 0.5);
+     output = constrain(output, -3.0, 3.0);
 
     //Sets our current angle to the old angle + the angle output we calculate with P and D
     virtualAngle[channel] += output;
 
     //Make sure we don't send it too far
-    virtualAngle[channel] = constrain(virtualAngle[channel], 0, 180);
+    virtualAngle[channel] = constrain(virtualAngle[channel], MIN_ANGLE[channel], MAX_ANGLE[channel]);
 
     //Actually moves the specific servo, only adds output. Output gets smaller over time to slow down servo movement over time
     turnServo(channel, virtualAngle[channel]);
@@ -79,10 +76,10 @@ void ServoController::moveServoPD(int channel, float kp, float kd) //kp = propor
     lastError[channel] = error;
   }
 
-void ServoController::moveAllServosPD(float kp, float kd)
+void ServoController::moveAllServosPD()
   {
     for (int i = 0; i < 5; i++)
       {
-        moveServoPD(i, kp, kd);
+        moveServoPD(i);
       }
   }
