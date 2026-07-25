@@ -29,10 +29,6 @@ class ServoController
             float virtualAngle[5]; 
             float lastError[5];
             unsigned long lastTime[5]; 
-
-            //P and D GAIN
-            float P = .8;
-            float D = .3;
         
     };
 
