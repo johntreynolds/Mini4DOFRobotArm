@@ -16,8 +16,8 @@ class IK
     {
         public:
             //IK Stuff
-            ArmAngles solveFullArm(float x, float y, float z, float phi);
-            ArmAngles solveFullArmDualPassIK(float x, float y, float z, float phi);
+            ArmAngles solveFullArmHori(float x, float y, float z);
+            ArmAngles solveFullArmVert(float x, float y, float z);
             void processIKSerial(ServoController &controller);
             
 
