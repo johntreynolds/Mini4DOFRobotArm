@@ -32,8 +32,8 @@ const float L2 = 85.0f; //Elbow to Wrist
 const float L3 = 84.0f; //Wrist to Claw
 
 //Colinear Constant Angles
-const float shoulderColinear = 90.0f;
-const float elbowColinear = 90.0f;
+const float shoulderColinear = 95.0f;
+const float elbowColinear = 60.0f;
 const float wristColinear = 90.0f;
 
 /*

@@ -26,11 +26,11 @@ ArmAngles IK::solveFullArmHori(float x, float y, float z)
     float alphaDeg = atan2(zw, rw) * RAD_TO_DEG;
     float cosBeta = (L1*L1 + d*d - L2*L2) / (2.0f * L1 * d);
     float betaDeg = acos(constrain(cosBeta, -1.0f, 1.0f)) * RAD_TO_DEG;
-    float shoulderOffset = abs(shoulderOffset - 90.0f);
+    float shoulderOffset = abs(shoulderColinear - 90.0f);
     float theta1 = alphaDeg + betaDeg + shoulderOffset;
     
     //Solve for Wrist
-    float wristOffset = abs(shoulderColinear - 90.0f);
+    float wristOffset = abs(wristColinear - 90.0f);
     float theta3 = (180 - betaDeg - gammaDeg) + (90.0f - alphaDeg);
 
     result.turret = constrain(thetaT, MIN_ANGLE[0], MAX_ANGLE[0]);
@@ -42,12 +42,6 @@ ArmAngles IK::solveFullArmHori(float x, float y, float z)
     Serial.print("rw="); Serial.println(rw);
     Serial.print("zw="); Serial.println(zw);
     Serial.print("d=");  Serial.println(d);
-
-    Serial.print("alphaDeg=");  Serial.println(alphaDeg);
-    Serial.print("betaDeg=");   Serial.println(betaDeg);
-    Serial.print("theta1=");    Serial.println(theta1);
-    Serial.print("theta2=");    Serial.println(theta2);
-    Serial.print("theta3=");    Serial.println(theta3);
 
     Serial.print("servoTurret=");   Serial.println(thetaT);
     Serial.print("shoulderAngle="); Serial.println(theta1);
@@ -109,9 +103,6 @@ ArmAngles IK::solveFullArmVert(float x, float y, float z)
 
     Serial.print("alphaDeg=");  Serial.println(alphaDeg);
     Serial.print("betaDeg=");   Serial.println(betaDeg);
-    Serial.print("theta1=");    Serial.println(theta1);
-    Serial.print("theta2=");    Serial.println(theta2);
-    Serial.print("theta3=");    Serial.println(theta3);
 
     Serial.print("servoTurret=");   Serial.println(thetaT);
     Serial.print("shoulderAngle="); Serial.println(theta1);
@@ -151,11 +142,11 @@ void IK::processIKSerial(ServoController &controller)
     line.trim();
 
     // Split into tokens
-    float values[4];
+    float values[3];
     int count = 0;
 
     int start = 0;
-    while (count < 4)
+    while (count < 3)
     {
         int spaceIndex = line.indexOf(' ', start);
 
@@ -184,11 +175,11 @@ void IK::processIKSerial(ServoController &controller)
     }
 
     // Validate
-    if (count != 4)
+    if (count != 3)
     {
         Serial.print("Invalid command (parsed ");
         Serial.print(count);
-        Serial.println(" values)");
+        Serial.println(" values, expected 3)");
         return;
     }
 
@@ -200,11 +191,11 @@ void IK::processIKSerial(ServoController &controller)
     Serial.print("PARSED: ");
     Serial.print(x); Serial.print(" ");
     Serial.print(y); Serial.print(" ");
-    Serial.print(z); Serial.print(" ");
+    Serial.println(z);
 
     // Run IK
-    //ArmAngles angles = solveFullArm(x, y, z, phi);
     ArmAngles angles = solveFullArmHori(x, y, z);
+    //ArmAngles angles = solveFullArmVert(x, y, z);
 
     controller.turnServo(0, angles.turret);
     controller.turnServo(1, angles.shoulder);
