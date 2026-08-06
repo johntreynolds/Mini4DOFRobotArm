@@ -1,39 +1,9 @@
 #include <Wire.h>
-#include "ServoController.h"
 #include <math.h>
 
-//--------------------------------------------------READY THE SERVOS-------------------------------------------------
-
-void ServoController::begin(int freq) 
-  {
-    pwm.begin();
-    pwm.setPWMFreq(freq);
-  }
-
-void ServoController::homeArm()
-{
-    //SET TIME
-    unsigned long now = micros();
-    for (int i = 0 ; i < 5; i++)
-      {
-        // Initialize PD controller state
-        virtualAngle[i] = HOMING[i];
-        targetAngle[i]  = HOMING[i];
-        lastError[i]    = 0;
-        lastTime[i]     = now;
-        turnServo(i, HOMING[i]);
-      }
-    Serial.println("Arm Homed");
-}
+#include "PIDMath.h"
 
 //----------------------------------PD Control Methods------------------------------------------------
-
-void ServoController::turnServo(int channel, float angle)
-  {
-    angle = constrain(angle, MIN_ANGLE[channel], MAX_ANGLE[channel]);
-    int tick = map(angle, MIN_ANGLE[channel], MAX_ANGLE[channel], MIN_TICK[channel], MAX_TICK[channel]);
-    pwm.setPWM(channel, 0, tick);
-  }
 
 void ServoController::setTargetPD(int channel, float angle)
   {

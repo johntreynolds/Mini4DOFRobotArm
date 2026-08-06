@@ -1,6 +1,7 @@
-#include <Wire.h>
 #include "ServoTesting.h"
 #include "ServoConstants.h"
+
+#include <Wire.h>
 
 // ------------------------------IMPORTANT ACTIONS----------------------------------
 

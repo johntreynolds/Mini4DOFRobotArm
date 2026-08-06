@@ -10,13 +10,6 @@ extern Adafruit_PWMServoDriver pwm;
 class ServoController
     {
         public:
-            //READY SERVOS
-            void begin(int freq);
-
-            //HOMING SEQUENCE
-            void homeArm();
-            void homeTurret();
-
             //PD Controller
             void turnServo(int channel, float angle);
             void setTargetPD(int channel, float angle);
@@ -24,11 +17,7 @@ class ServoController
             void moveAllServosPD();
 
         private:
-            //PD Controller
-            float targetAngle[5];
-            float virtualAngle[5]; 
-            float lastError[5];
-            unsigned long lastTime[5]; 
+            
         
     };
 

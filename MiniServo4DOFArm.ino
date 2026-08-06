@@ -1,13 +1,12 @@
-#include "ServoController.h"
+#include "PIDMath.h"
 #include "ServoTesting.h" 
-#include "IK.h"
+#include "IKMath.h"
 
 //SETUP ITEMS
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x40);
 bool robotStopped = false;
-ServoController armController;
 ServoTesting testing;
-IK ik;
+MovementControl controller;
 
 //=========================START OF PRODUCTION CODE FOR THE ROBOT======================================================
 
@@ -16,8 +15,8 @@ void setup()
     Serial.begin(9600);
     Wire.begin();
     //PRODUCTION CODE
-    armController.begin(50);
-    armController.homeArm();
+    controller.begin(50);
+    controller.homeArm();
 
     //TESTING
     //testing.beginTest(50);
@@ -32,12 +31,13 @@ void loop()
     //armController.moveAllServosPD();
 
     //TESTING
+    
     for (int i = 0; i < 200; i++)
       {
         ArmAngles t;
 
         // ---- Pose 1 ----
-        t = ik.solveFullArmHori(80, 0, 120);
+        t = ik.solveFullArmHori(100, 0, 140);
         armController.setTargetPD(0, t.turret);
         armController.setTargetPD(1, t.shoulder);
         armController.setTargetPD(2, t.elbow);
@@ -50,7 +50,7 @@ void loop()
           }
 
         // ---- Pose 2 ----
-        t = ik.solveFullArmHori(120, 0, 120);
+        t = ik.solveFullArmHori(100, 0, 100);
         armController.setTargetPD(0, t.turret);
         armController.setTargetPD(1, t.shoulder);
         armController.setTargetPD(2, t.elbow);
@@ -63,7 +63,7 @@ void loop()
           }
 
         // ---- Pose 3 ----
-        t = ik.solveFullArmHori(120, 0, 80);
+        t = ik.solveFullArmHori(140, 0, 100);
         armController.setTargetPD(0, t.turret);
         armController.setTargetPD(1, t.shoulder);
         armController.setTargetPD(2, t.elbow);
@@ -76,7 +76,7 @@ void loop()
           }
 
         // ---- Pose 4 ----
-        t = ik.solveFullArmHori(80, 0, 80);
+        t = ik.solveFullArmHori(140, 0, 140);
         armController.setTargetPD(0, t.turret);
         armController.setTargetPD(1, t.shoulder);
         armController.setTargetPD(2, t.elbow);
@@ -89,6 +89,7 @@ void loop()
           }
     }
 
+    
 
     //testing.runServoTravelTuning();
     //testing.scanI2C();
