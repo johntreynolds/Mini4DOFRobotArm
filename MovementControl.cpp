@@ -1,14 +1,39 @@
 #include "MovementControl.h"
-#include "ServoConstants.h"
 
-#include <Wire.h>
-#include <math.h>
+//------------------------------------------PREP ITEMS-----------------------------------------------
 
 void MovementControl::begin(int freq) 
   {
+    Serial.begin(9600);
+    Wire.begin();
     pwm.begin();
     pwm.setPWMFreq(freq);
   }
+
+void MovementControl::homeArm()
+  {
+    pd.resetPDToHome();
+    for (int i = 0; i < 5; i++)
+      {
+        turnServo(i, HOMING[i]);
+      }
+  }
+
+void MovementControl::telemetry()
+  {
+    Serial.println("---- TELEMETRY ----");
+    Serial.print("Turret:   "); Serial.println(angles.turret);
+    Serial.print("Shoulder: "); Serial.println(angles.shoulder);
+    Serial.print("Elbow:    "); Serial.println(angles.elbow);
+    Serial.print("Wrist:    "); Serial.println(angles.wrist);
+    Serial.print("Input XYZ: ");
+    Serial.print(input.x); Serial.print(" ");
+    Serial.print(input.y); Serial.print(" ");
+    Serial.println(input.z);
+    Serial.println("-------------------");
+  }
+
+//---------------------------------MOVE SERVOS------------------------------
 
 void MovementControl::turnServo(int channel, float angle)
   {
@@ -17,26 +42,22 @@ void MovementControl::turnServo(int channel, float angle)
     pwm.setPWM(channel, 0, tick);
   }
 
-void MovementControl::homeArm()
-{
-    //SET TIME
-    unsigned long now = micros();
-    for (int i = 0 ; i < 5; i++)
+void MovementControl::moveAllServos()
+  {
+    for (int i = 0; i < 5; i++)
       {
-        // Initialize PD controller state
-        virtualAngle[i] = HOMING[i];
-        targetAngle[i]  = HOMING[i];
-        lastError[i]    = 0;
-        lastTime[i]     = now;
-        turnServo(i, HOMING[i]);
+        pd.pdServoMath(i);
+        float angle = pd.getVirtualAngle(i);
+        turnServo(i, angle);
       }
-    Serial.println("Arm Homed");
-}
+  }
 
-void MovementControl::processIKSerial()
+//----------------------------------------------------IK TESTING DEVELOPMENT-------------------------------------------
+
+bool MovementControl::processIKSerial()
   {
     if (!Serial.available())
-        return;
+        return false;
 
     // Read full line
     String line = Serial.readStringUntil('\n');
@@ -82,23 +103,100 @@ void MovementControl::processIKSerial()
         Serial.print("Parse error: got ");
         Serial.print(count);
         Serial.println(" values");
-        return;
+        return false;
     }
 
     input.x = values[0];
     input.y = values[1];
     input.z = values[2];
 
-    // Telemetry (IK math stays clean)
-    Serial.println("---- TELEMETRY ----");
-    Serial.print("Input XYZ: ");
-    Serial.print(input.x); Serial.print(" ");
-    Serial.print(input.y); Serial.print(" ");
-    Serial.println(input.z);
+    return true;
 
-    Serial.print("Turret:   "); Serial.println(angles.turret);
-    Serial.print("Shoulder: "); Serial.println(angles.shoulder);
-    Serial.print("Elbow:    "); Serial.println(angles.elbow);
-    Serial.print("Wrist:    "); Serial.println(angles.wrist);
-    Serial.println("-------------------");
+  }
+
+void MovementControl::manualIKTest()
+  {
+    if (!processIKSerial())
+        return;
+    angles = ik.solveFullArmHori(input.x, input.y, input.z);
+
+    IKStatus status = ik.validateAngles(angles);
+    if (status != IK_OK)
+      {
+          Serial.print("IK ERROR: ");
+          Serial.println(status);
+          return;   // SAFETY: DO NOT MOVE
+      }
+
+    telemetry();
+    pd.setTargetPD(0, angles.turret);
+    pd.setTargetPD(1, angles.shoulder);
+    pd.setTargetPD(2, angles.elbow);
+    pd.setTargetPD(3, angles.wrist);
+    moveAllServos();
+  }
+
+void MovementControl::ikTestBox()
+  {
+    ArmAngles t;
+
+        // ---- Pose 1 ----
+        t = ik.solveFullArmHori(100, 0, 130);
+        pd.setTargetPD(0, t.turret);
+        pd.setTargetPD(1, t.shoulder);
+        pd.setTargetPD(2, t.elbow);
+        pd.setTargetPD(3, t.wrist);
+
+        for (int i = 0; i < 50; i++)
+          {
+            moveAllServos();
+            delay(5);
+          }
+        angles = t;
+        telemetry();
+
+        // ---- Pose 2 ----
+        t = ik.solveFullArmHori(100, 0, 100);
+        pd.setTargetPD(0, t.turret);
+        pd.setTargetPD(1, t.shoulder);
+        pd.setTargetPD(2, t.elbow);
+        pd.setTargetPD(3, t.wrist);
+
+        for (int i = 0; i < 50; i++)
+          {
+            moveAllServos();
+            delay(5);
+          }
+        angles = t;
+        telemetry();
+
+        // ---- Pose 3 ----
+        t = ik.solveFullArmHori(130, 0, 100);
+        pd.setTargetPD(0, t.turret);
+        pd.setTargetPD(1, t.shoulder);
+        pd.setTargetPD(2, t.elbow);
+        pd.setTargetPD(3, t.wrist);
+
+        for (int i = 0; i < 50; i++)
+          {
+            moveAllServos();
+            delay(5);
+          }
+        angles = t;
+        telemetry();
+
+        // ---- Pose 4 ----
+        t = ik.solveFullArmHori(130, 0, 130);
+        pd.setTargetPD(0, t.turret);
+        pd.setTargetPD(1, t.shoulder);
+        pd.setTargetPD(2, t.elbow);
+        pd.setTargetPD(3, t.wrist);
+
+        for (int i = 0; i < 50; i++)
+          {
+            moveAllServos();
+            delay(5);
+          }
+        angles = t;
+        telemetry();
   }

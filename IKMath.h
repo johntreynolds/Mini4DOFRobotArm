@@ -2,6 +2,10 @@
 #define IK_h
 
 #include "CoreTypes.h"
+#include "ServoConstants.h"
+#include <Wire.h>
+#include <Arduino.h>
+#include <math.h>
 
 class IKMath
     {

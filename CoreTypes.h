@@ -5,14 +5,13 @@
 
 enum IKStatus 
   {
-      IK_OK,
-      IK_UNREACHABLE,
-      IK_TURRET_LIMIT,
-      IK_SHOULDER_LIMIT,
-      IK_ELBOW_LIMIT,
-      IK_WRIST_LIMIT,
-      IK_TOO_FAR,
-      IK_TOO_CLOSE
+      IK_TURRET_LIMIT,    //Error Code 0
+      IK_SHOULDER_LIMIT,  //Error Code 1
+      IK_ELBOW_LIMIT,     //Error Code 2
+      IK_WRIST_LIMIT,     //Error Code 3
+      IK_TOO_FAR,         //Error Code 4
+      IK_TOO_CLOSE,       //Error Code 5
+      IK_OK               
   };
 
 struct ArmAngles

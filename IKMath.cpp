@@ -1,10 +1,4 @@
 #include "IKMath.h"
-#include "ServoConstants.h"
-#include "CoreTypes.h"
-
-#include <Wire.h>
-#include <Arduino.h>
-#include <math.h>
 
 ArmAngles IKMath::solveFullArmHori(float x, float y, float z) //DOESN'T DEAL WITH ISSUES
   {
@@ -53,6 +47,7 @@ ArmAngles IKMath::solveFullArmHori(float x, float y, float z) //DOESN'T DEAL WIT
     result.elbow = theta2;
     result.wrist = theta3;
 
+    result.status = IK_OK;
     return result;
 
     /*
@@ -106,9 +101,13 @@ ArmAngles IKMath::solveFullArmVert(float x, float y, float z)
 
 IKStatus IKMath::validateAngles(const ArmAngles &a)
   {
-    if (a.status != IK_OK)
+    if (a.status == IK_TOO_FAR)
       {
-        return IK_UNREACHABLE;
+        return IK_TOO_FAR;
+      }
+    if (a.status == IK_TOO_CLOSE)
+      {
+        return IK_TOO_CLOSE;
       }
     if (a.turret < MIN_ANGLE[0] || a.turret > MAX_ANGLE[0])
       {

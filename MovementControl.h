@@ -2,32 +2,36 @@
 #define MovementControl_h
 
 #include <Arduino.h>
-#include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
 
-#include "ServoConstants.h"
 #include "CoreTypes.h"
-
-//OBJECT CREATION
-extern Adafruit_PWMServoDriver pwm;
+#include "ServoConstants.h"
+#include "IKMath.h"
+#include "PIDMath.h"
 
 class MovementControl
     {
         public:
-            //READY SERVOS
+            //READY SERVOS AND HOME
             void begin(int freq);
-
-            //Basic Servo Turn
-            void turnServo(int channel, float angle);
-
-            //HOMING SEQUENCE
             void homeArm();
+            void telemetry();
 
-            //Take Serial Input
-            void processIKSerial();
+            //SERVO Turning
+            void turnServo(int channel, float angle); 
+            void moveAllServos();
 
+            //IK ITEMS
+            bool processIKSerial();
+            void ikTestBox();
+            void manualIKTest();
 
         private:
+            IKMath ik;
+            PIDMath pd;
+
+            IKInput input;
+            ArmAngles angles;
     };
 
 #endif
