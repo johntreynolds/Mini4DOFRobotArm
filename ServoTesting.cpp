@@ -1,42 +1,25 @@
-#include <Wire.h>
 #include "ServoTesting.h"
+#include "ServoConstants.h"
+
+#include <Wire.h>
+#include <Arduino.h>
+#include <math.h>
 
 // ------------------------------IMPORTANT ACTIONS----------------------------------
 
-void ServoTesting::beginTest(int freq)
-  {
-      pwm.begin();
-      pwm.setPWMFreq(freq);
-  } 
-
-void ServoTesting::turnServosTest(int channel, float angle)
+void ServoTesting::moveToAngleTest(int channel, float angle)
   {
     angle = constrain(angle, MIN_ANGLE[channel], MAX_ANGLE[channel]);
-    int tick = map(angle, MIN_ANGLE[channel], MAX_ANGLE[channel], MIN_TICK[channel], MAX_TICK[channel]);
+    int tick = map(angle, MIN_ANGLE[channel], MAX_ANGLE[channel],
+                   MIN_TICK[channel], MAX_TICK[channel]);
+
     pwm.setPWM(channel, 0, tick);
-  }
-
-void ServoTesting::prepServosTest(float angle)
-    {
-        for (int i = 0; i < 5; i++)
-            {
-            // Set physical servo position
-            turnServosTest(servoArray[i], angle);
-            }
-        Serial.println("Servos initialized.");
-        delay(2000);
-    }
-
-
-void ServoTesting::stopServo(int channel)
-  {
-    pwm.setPWM(channel, 0, 0);
   }
 
 // ------------------------TUNING TICK RANGES------------------------------
 
 void ServoTesting::manualTickStep()
-{
+  {
     Serial.println("=== MANUAL TICK STEP MODE ===");
     Serial.println("Commands:");
     Serial.println("  + = tick up");
@@ -97,7 +80,7 @@ void ServoTesting::manualTickStep()
             }
         }
     }
-}
+  }
 
 //---------------------------RUN TEXT CHANGES PROJECT------------------------------------------
 
@@ -108,7 +91,7 @@ void ServoTesting::liveCommand(int servoNum, int angle)
       {
         for (int i = 0; i < 5; i++)
           { 
-            turnServosTest(i, angle);
+            moveToAngleTest(i, angle);
           }
 
         Serial.print("All servos set to ");
@@ -123,7 +106,7 @@ void ServoTesting::liveCommand(int servoNum, int angle)
         return;
       }
 
-    turnServosTest(servoNum, angle);
+    moveToAngleTest(servoNum, angle);
 
     Serial.print("Servo ");
     Serial.print(servoNum + 1);

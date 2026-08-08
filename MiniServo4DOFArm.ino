@@ -1,31 +1,30 @@
-#include "ServoController.h"
-#include "ServoTesting.h" 
+#include "MovementControl.h"
+#include "IKMath.h"
+#include "PIDMath.h"
+#include "ServoTesting.h"
+#include <Wire.h>
 
 //SETUP ITEMS
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x40);
-bool robotStopped = false;
-ServoController armController;
-ServoTesting testing; 
+ServoTesting testing;
+MovementControl controller;
 
 //=========================START OF PRODUCTION CODE FOR THE ROBOT======================================================
 
 void setup() 
   {
-    Serial.begin(9600);
-
     //PRODUCTION CODE
-    armController.begin(50);
-    armController.homeArm();
-   
-    //TESTING
-    //testing.beginTest(50);
-    //testing.prepServosTest(90);
+    controller.begin(50);
+    controller.homeArm();
+    Serial.println("ROBOT READY");
+    delay(1000);
   }
 
 void loop()
   {
     //PRODUCTION CODE
-    armController.moveAllServosPD();
+    //controller.ikTestBox();
+    controller.manualIKTest();
 
     //TESTING
     //testing.runServoTravelTuning();
