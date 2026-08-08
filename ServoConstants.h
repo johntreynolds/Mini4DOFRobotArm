@@ -3,7 +3,6 @@
 #ifndef ServoConstants_h
 #define ServoConstants_h
 
-//SERVO LOCATIONS - FIXED
 // Turret Shoulder Elbow Wrist Claw
 // 0      1        2     3     4
 const int MIN_TICK[5]    = {90, 90, 87, 85, 85};
