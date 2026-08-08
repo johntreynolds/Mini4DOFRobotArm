@@ -13,6 +13,7 @@ class IKMath
             //IK Stuff
             ArmAngles solveFullArmHori(float x, float y, float z);
             ArmAngles solveFullArmVert(float x, float y, float z);
+            ArmAngles solveFullArmPhi(float x, float y, float z, float phi);
             void processIKSerial();
             IKStatus validateAngles(const ArmAngles &a);
             

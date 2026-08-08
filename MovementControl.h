@@ -25,6 +25,7 @@ class MovementControl
             bool processIKSerial();
             void ikTestBox();
             void manualIKTest();
+            void rotateAroundXYZ(float x, float y, float z, float phiMin, float phiMax);
 
         private:
             IKMath ik;
@@ -32,6 +33,7 @@ class MovementControl
 
             IKInput input;
             ArmAngles angles;
+
     };
 
 #endif

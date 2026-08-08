@@ -21,6 +21,10 @@ struct ArmAngles
     float elbow;
     float wrist;
     float claw;
+    float rw;
+    float zw;
+    float phi;
+    bool hasPhi;
     IKStatus status;
   };
 
@@ -29,7 +33,8 @@ struct IKInput
     float x;
     float y;
     float z;
-    bool valid; //MAYBE
+    float phi;
+    float hasPhi;
   };
 
 #endif

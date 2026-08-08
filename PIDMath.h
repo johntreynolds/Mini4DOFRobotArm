@@ -2,7 +2,10 @@
 #define PIDMath_h
 
 #include <Arduino.h>
+#include <Wire.h>
+#include <math.h>
 #include <Adafruit_PWMServoDriver.h>
+
 #include "ServoConstants.h"
 
 //OBJECT CREATION

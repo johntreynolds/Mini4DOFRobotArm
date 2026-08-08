@@ -1,10 +1,4 @@
 #include "PIDMath.h"
-#include "ServoConstants.h"
-#include "MovementControl.h"
-
-#include <Wire.h>
-#include <Arduino.h>
-#include <math.h>
 
 //----------------------------------PD Control Methods------------------------------------------------
 

@@ -22,10 +22,16 @@ void MovementControl::homeArm()
 void MovementControl::telemetry()
   {
     Serial.println("---- TELEMETRY ----");
+    Serial.print("RW:   "); Serial.println(angles.rw);
+    Serial.print("ZW:   "); Serial.println(angles.zw);
     Serial.print("Turret:   "); Serial.println(angles.turret);
     Serial.print("Shoulder: "); Serial.println(angles.shoulder);
     Serial.print("Elbow:    "); Serial.println(angles.elbow);
     Serial.print("Wrist:    "); Serial.println(angles.wrist);
+    if (angles.hasPhi == true)
+      {
+        Serial.print("Phi:    "); Serial.println(angles.phi);
+      }
     Serial.print("Input XYZ: ");
     Serial.print(input.x); Serial.print(" ");
     Serial.print(input.y); Serial.print(" ");
@@ -70,11 +76,11 @@ bool MovementControl::processIKSerial()
     line.trim();
 
     // Parse values
-    float values[3];
+    float values[4];
     int count = 0;
 
     int start = 0;
-    while (count < 3)
+    while (count < 4)
     {
         int spaceIndex = line.indexOf(' ', start);
 
@@ -98,7 +104,7 @@ bool MovementControl::processIKSerial()
         start = spaceIndex + 1;
     }
 
-    if (count != 3)
+    if (count != 3 && count != 4)
     {
         Serial.print("Parse error: got ");
         Serial.print(count);
@@ -110,6 +116,12 @@ bool MovementControl::processIKSerial()
     input.y = values[1];
     input.z = values[2];
 
+    input.hasPhi = (count == 4);
+    if (input.hasPhi)
+      {
+        input.phi = values[3];
+      }
+        
     return true;
 
   }
@@ -118,8 +130,14 @@ void MovementControl::manualIKTest()
   {
     if (!processIKSerial())
         return;
-    angles = ik.solveFullArmHori(input.x, input.y, input.z);
-
+    if (input.hasPhi)
+      {
+        angles = ik.solveFullArmPhi(input.x, input.y, input.z, input.phi);
+      }
+    else
+      {
+        angles = ik.solveFullArmVert(input.x, input.y, input.z);
+      }
     IKStatus status = ik.validateAngles(angles);
     if (status != IK_OK)
       {
@@ -199,4 +217,9 @@ void MovementControl::ikTestBox()
           }
         angles = t;
         telemetry();
+  }
+
+void MovementControl::rotateAroundXYZ(float x, float y, float z, float phiMin, float phiMax)
+  {
+    
   }

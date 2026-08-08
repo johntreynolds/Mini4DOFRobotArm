@@ -1,6 +1,6 @@
 #include "IKMath.h"
 
-ArmAngles IKMath::solveFullArmHori(float x, float y, float z) //DOESN'T DEAL WITH ISSUES
+ArmAngles IKMath::solveFullArmHori(float x, float y, float z)
   {
     //Return value
     ArmAngles result;
@@ -40,12 +40,19 @@ ArmAngles IKMath::solveFullArmHori(float x, float y, float z) //DOESN'T DEAL WIT
     
     //Solve for Wrist
     float wristOffset = abs(wristColinear - 90.0f);
-    float theta3 = (180 - betaDeg - gammaDeg) + (90.0f - alphaDeg);
+    float wristDelta = 180.0f - betaDeg - gammaDeg;
+    float wristChi = 90.0f - alphaDeg;
+    float theta3 = wristDelta + wristChi;
 
     result.turret = thetaT;
     result.shoulder = theta1;
     result.elbow = theta2;
     result.wrist = theta3;
+
+    result.rw = rw;
+    result.zw = zw;
+
+    result.hasPhi = false;
 
     result.status = IK_OK;
     return result;
@@ -70,6 +77,17 @@ ArmAngles IKMath::solveFullArmVert(float x, float y, float z)
     float zw = z + L3;  
     float d = sqrt(rw*rw + zw*zw);
 
+    if (d > L1 + L2)
+      {
+        result.status = IK_TOO_FAR;
+        return result;
+      }
+    if (d < fabs(L1 - L2))
+      {
+        result.status = IK_TOO_CLOSE;
+        return result;
+      }
+
     //Solve for Elbow (theta 2)
     float cosGamma = (L1*L1 + L2*L2 - d*d) / (2.0f * L1 * L2);
     float gammaDeg = acos(constrain(cosGamma, -1.0f, 1.0f)) * RAD_TO_DEG; 
@@ -80,12 +98,17 @@ ArmAngles IKMath::solveFullArmVert(float x, float y, float z)
     float alphaDeg = atan2(zw, rw) * RAD_TO_DEG;
     float cosBeta = (L1*L1 + d*d - L2*L2) / (2.0f * L1 * d);
     float betaDeg = acos(constrain(cosBeta, -1.0f, 1.0f)) * RAD_TO_DEG;
-    float shoulderOffset = abs(shoulderOffset - 90.0f);
+    float shoulderOffset = abs(shoulderColinear - 90.0f);
     float theta1 = alphaDeg + betaDeg + shoulderOffset;
     
     //Solve for Wrist
-    float wristOffset = abs(shoulderColinear - 90.0f);
-    float theta3 = (180 - betaDeg - gammaDeg) + (90.0f - alphaDeg);
+    float wristOffset = abs(wristColinear - 90.0f);
+    float wristDelta = 180.0f - betaDeg - gammaDeg;
+    float wristChi = 90.0f - alphaDeg;
+    float theta3 = wristDelta + wristChi - 90.0f;
+
+    result.rw = rw;
+    result.zw = zw;
 
     result.turret = constrain(thetaT, MIN_ANGLE[0], MAX_ANGLE[0]);
     result.elbow = constrain(theta2, MIN_ANGLE[2], MAX_ANGLE[2]);
@@ -96,7 +119,74 @@ ArmAngles IKMath::solveFullArmVert(float x, float y, float z)
       
     */
 
+    result.hasPhi = false;
+    result.status = IK_OK;
     return result;
+  }
+
+ArmAngles IKMath::solveFullArmPhi(float x, float y, float z, float phi)
+  {
+    //Return value
+    ArmAngles result;
+
+    //Solve for Turret
+    float thetaT = atan2(y, x) * RAD_TO_DEG;
+
+    //Isolate Wrist Pivot (rw, zw)
+    float phiRad = phi*DEG_TO_RAD;
+    float rTarget = sqrt(x*x + y*y);
+    float rw = rTarget - (L3*sin(phiRad));
+    float zw = z + (L3*cos(phiRad));  
+    float d = sqrt(rw*rw + zw*zw);
+
+    if (d > L1 + L2)
+      {
+        result.status = IK_TOO_FAR;
+        return result;
+      }
+    if (d < fabs(L1 - L2))
+      {
+        result.status = IK_TOO_CLOSE;
+        return result;
+      }
+
+    //Solve for Elbow (theta 2)
+    float cosGamma = (L1*L1 + L2*L2 - d*d) / (2.0f * L1 * L2);
+    float gammaDeg = acos(constrain(cosGamma, -1.0f, 1.0f)) * RAD_TO_DEG; 
+    float elbowOffset = fabs(elbowColinear - 90.0f);
+    float theta2 = 270.0f - gammaDeg - elbowOffset;
+
+    //Solve for Shoulder (theta 1)
+    float alphaDeg = atan2(zw, rw) * RAD_TO_DEG;
+    float cosBeta = (L1*L1 + d*d - L2*L2) / (2.0f * L1 * d);
+    float betaDeg = acos(constrain(cosBeta, -1.0f, 1.0f)) * RAD_TO_DEG;
+    float shoulderOffset = fabs(shoulderColinear - 90.0f);
+    float theta1 = alphaDeg + betaDeg + shoulderOffset;
+    
+    //Solve for Wrist
+    //float wristOffset = abs(wristColinear - 90.0f); NOT NEEDED RIGHT NOW
+    float deltaDeg = 180.0f - gammaDeg - betaDeg;
+    float chiDeg = 90.0f - alphaDeg;
+    float theta3 = deltaDeg + chiDeg + phi - 90.0f;
+
+    result.turret = thetaT;
+    result.shoulder = theta1;
+    result.elbow = theta2;
+    result.wrist = theta3;
+
+    result.rw = rw;
+    result.zw = zw;
+
+    result.phi = phi;
+    result.hasPhi = true;
+
+    result.status = IK_OK;
+    return result;
+
+    /*
+      
+    */
+ 
   }
 
 IKStatus IKMath::validateAngles(const ArmAngles &a)
@@ -121,7 +211,7 @@ IKStatus IKMath::validateAngles(const ArmAngles &a)
       {
         return IK_ELBOW_LIMIT;
       } 
-    if (a.wrist < MIN_ANGLE[3] || a.wrist > MAX_ANGLE[3])
+    if (a.wrist <= MIN_ANGLE[3] || a.wrist > MAX_ANGLE[3])
       {
         return IK_WRIST_LIMIT;
       } 
