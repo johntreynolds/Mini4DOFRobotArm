@@ -156,8 +156,10 @@ void ServoTesting::runServoTravelTuning()
 // ------------------------------I2C Test---------------------------
 
 void ServoTesting::scanI2C()
-    {
+  {
     Serial.println("=== I2C Scanner ===");
+
+    Wire.begin(21, 22);
 
     byte error, address;
     int nDevices = 0;
@@ -182,7 +184,8 @@ void ServoTesting::scanI2C()
         Serial.println("Scan complete.");
 
     Serial.println("====================");
-    }
+  }
+  
 
 
   
