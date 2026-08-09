@@ -1,4 +1,4 @@
-//ARDUINO CODEBASE
+//ESP32 CODEBASE
 
 #include "MovementControl.h"
 #include "IKMath.h"
@@ -32,6 +32,3 @@ void loop()
     //testing.runServoTravelTuning();
     //testing.scanI2C();
   }
-
-
-  

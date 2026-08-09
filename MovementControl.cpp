@@ -4,9 +4,10 @@
 
 void MovementControl::begin(int freq) 
   {
-    Serial.begin(9600);
-    Wire.begin();
+    Serial.begin(115200);
+    Wire.begin(21, 22);
     pwm.begin();
+    delay(20);
     pwm.setPWMFreq(freq);
   }
 
