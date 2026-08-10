@@ -1,5 +1,7 @@
 #include "MovementControl.h"
 
+extern RobotWebServer webServer;
+
 //------------------------------------------PREP ITEMS-----------------------------------------------
 
 void MovementControl::begin(int freq) 
@@ -9,6 +11,7 @@ void MovementControl::begin(int freq)
     pwm.begin();
     delay(20);
     pwm.setPWMFreq(freq);
+    _isEStopped = false;
   }
 
 void MovementControl::homeArm()
@@ -18,8 +21,40 @@ void MovementControl::homeArm()
       {
         turnServo(i, HOMING[i]);
       }
+    webServer.log("Robot Homed");
   }
 
+//---------------------------------MOVE SERVOS------------------------------
+
+void MovementControl::turnServo(int channel, float angle)
+  {
+    if (_isEStopped)
+      {
+        return;
+      }
+    angle = constrain(angle, MIN_ANGLE[channel], MAX_ANGLE[channel]);
+    int tick = map(angle, MIN_ANGLE[channel], MAX_ANGLE[channel], MIN_TICK[channel], MAX_TICK[channel]);
+    pwm.setPWM(channel, 0, tick);
+  }
+
+void MovementControl::moveAllServos()
+  {
+    if (_isEStopped)
+      {
+        return;
+      }
+    
+    for (int i = 0; i < 5; i++)
+      {
+        pd.pdServoMath(i);
+        float angle = pd.getVirtualAngle(i);
+        turnServo(i, angle);
+      }
+  }
+
+//----------------------------------------------------IK TESTING DEVELOPMENT-------------------------------------------
+
+/*
 void MovementControl::telemetry()
   {
     Serial.println("---- TELEMETRY ----");
@@ -39,27 +74,6 @@ void MovementControl::telemetry()
     Serial.println(input.z);
     Serial.println("-------------------");
   }
-
-//---------------------------------MOVE SERVOS------------------------------
-
-void MovementControl::turnServo(int channel, float angle)
-  {
-    angle = constrain(angle, MIN_ANGLE[channel], MAX_ANGLE[channel]);
-    int tick = map(angle, MIN_ANGLE[channel], MAX_ANGLE[channel], MIN_TICK[channel], MAX_TICK[channel]);
-    pwm.setPWM(channel, 0, tick);
-  }
-
-void MovementControl::moveAllServos()
-  {
-    for (int i = 0; i < 5; i++)
-      {
-        pd.pdServoMath(i);
-        float angle = pd.getVirtualAngle(i);
-        turnServo(i, angle);
-      }
-  }
-
-//----------------------------------------------------IK TESTING DEVELOPMENT-------------------------------------------
 
 bool MovementControl::processIKSerial()
   {
@@ -220,19 +234,27 @@ void MovementControl::ikTestBox()
         telemetry();
   }
 
-void MovementControl::rotateAroundXYZ(float x, float y, float z, float phiMin, float phiMax)
-  {
-    
-  }
+*/
+
+// --------------------------------- MOVEMENT HANDLING ----------------------------
+
+/*
 
 bool MovementControl::processWebTarget(float x, float y, float z, float phi) 
-{
+  {
     // Pass 4 arguments and receive ArmAngles directly:
     ArmAngles targetAngles = ik.solveFullArmPhi(x, y, z, phi);
 
+    IKStatus status = ik.validateAngles(targetAngles);
+    if (status != IK_OK)
+      {
+        Serial.print("[IK ERROR] Web target unreachable, status code: ");
+        Serial.println(status);
+        return false;   // Safety: do not write to servos
+      }
+
     // Update member variables
     angles = targetAngles;
-
     input.x = x;
     input.y = y;
     input.z = z;
@@ -246,4 +268,132 @@ bool MovementControl::processWebTarget(float x, float y, float z, float phi)
     pd.setTargetPD(3, angles.wrist);
 
     return true;
-}
+  }
+
+*/
+
+void MovementControl::emergencyStop()
+  {
+    _isEStopped = true;
+    for (int i = 0; i < 5; i++)
+      {
+        pwm.setPWM(i, 0, 0);
+      }
+    // TEXT FOR EMERGENCY STOP 
+  }
+
+void MovementControl::releaseEStop()
+  {
+    _isEStopped = false;
+    pd.resetPDToHome();
+  }
+
+void MovementControl::setOpMode(uint8_t mode)
+  {
+    if (_currentOpMode == mode)
+      {
+        return;
+      }
+    _currentOpMode = mode;
+    //OPMODE CHANGED TEXT
+
+    switch (_currentOpMode)
+      {
+        case 0: // OPMODE_MANUAL_XYZ
+            break;
+        case 1: // OPMODE_LIVE_SLIDERS
+            break;
+        case 2: // OPMODE_INFINITE_BALL
+            break;
+        default:
+            break;
+      }
+  }
+
+void MovementControl::getCurrentPose(float &x, float &y, float &z, float &phi)
+  {
+    x = input.x;
+    y = input.y;
+    z = input.z;
+    phi = input.hasPhi ? input.phi : 0.0f;
+  }
+
+void MovementControl::getCurrentAngles(float &turret, float &shoulder, float &elbow, float &wrist, float &claw)
+  {
+    turret = angles.turret;
+    shoulder = angles.shoulder;
+    elbow = angles.elbow;
+    wrist = angles.wrist;
+    claw = angles.claw;
+  }
+
+// ----------------------------- CLAW MOVEMENT ------------------------------
+
+void MovementControl::moveClaw(float percent)
+  {
+    percent = constrain(percent, 0.0f, 100.0f);
+    float clawAngle = map(percent, 0.0f, 100.0f, MAX_ANGLE[4], MIN_ANGLE[4]);
+    angles.claw = clawAngle;
+    turnServo(4, clawAngle);
+  }
+
+// ----------------------------------- OPMODES ----------------------------------------
+
+bool MovementControl::rotateAroundXYZ(float x, float y, float z, float phiMin, float phiMax)
+  {
+    
+  }
+
+bool MovementControl::manualCompute(float x, float y, float z, float phi)
+  {
+    ArmAngles targetAngles = ik.solveFullArmPhi(x, y, z, phi);
+    IKStatus status = ik.validateAngles(targetAngles);
+    if (status != IK_OK)
+      {
+        webServer.logf("[IK ERROR] Manual XYZ target (%.1f, %.1f, %.1f) unreachable! Code: %d\n", 
+                      x, y, z, status);
+        return false;
+      }
+    // Update state & PD targets
+    angles = targetAngles;
+    input.x = x; 
+    input.y = y; 
+    input.z = z; 
+    input.phi = phi; 
+    input.hasPhi = true;
+
+    pd.setTargetPD(0, angles.turret);
+    pd.setTargetPD(1, angles.shoulder);
+    pd.setTargetPD(2, angles.elbow);
+    pd.setTargetPD(3, angles.wrist);
+
+    moveAllServos();
+    return true;
+
+  }
+
+bool MovementControl::runManualXYZ(float x, float y, float z, float phi, float clawPercent)
+  {
+    if (!manualCompute(x, y, z, phi)) 
+      {
+        return false; 
+      }
+
+    moveClaw(clawPercent);
+    return true; 
+  }  
+
+bool MovementControl::runLiveSliders(float x, float y, float z, float phi, float clawPercent)
+  {
+    if (!manualCompute(x, y, z, phi)) 
+      {
+        return false;
+      }
+    moveClaw(clawPercent);
+    return true;
+  }
+
+void MovementControl::remoteControl()
+  {
+
+  }

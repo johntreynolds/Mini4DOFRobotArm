@@ -218,3 +218,5 @@ IKStatus IKMath::validateAngles(const ArmAngles &a)
 
     return IK_OK;   
   }
+
+// ------------------------------------- DIRECT KINEMATICS ---------------------------------
