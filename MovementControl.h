@@ -25,14 +25,23 @@ class MovementControl
             bool processIKSerial();
             void ikTestBox();
             void manualIKTest();
+
+            //OPMODES
+            bool processWebTarget(float x, float y, float z, float phi);
             void rotateAroundXYZ(float x, float y, float z, float phiMin, float phiMax);
 
+            IKInput getInput() const 
+                { 
+                    return input; 
+                }
+
         private:
-            IKMath ik;
-            PIDMath pd;
 
             IKInput input;
             ArmAngles angles;
+
+            IKMath ik;
+            PIDMath pd;
 
     };
 

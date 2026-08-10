@@ -224,3 +224,26 @@ void MovementControl::rotateAroundXYZ(float x, float y, float z, float phiMin, f
   {
     
   }
+
+bool MovementControl::processWebTarget(float x, float y, float z, float phi) 
+{
+    // Pass 4 arguments and receive ArmAngles directly:
+    ArmAngles targetAngles = ik.solveFullArmPhi(x, y, z, phi);
+
+    // Update member variables
+    angles = targetAngles;
+
+    input.x = x;
+    input.y = y;
+    input.z = z;
+    input.phi = phi;
+    input.hasPhi = true;
+
+    // Update PID target angles
+    pd.setTargetPD(0, angles.turret);
+    pd.setTargetPD(1, angles.shoulder);
+    pd.setTargetPD(2, angles.elbow);
+    pd.setTargetPD(3, angles.wrist);
+
+    return true;
+}

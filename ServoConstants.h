@@ -10,6 +10,7 @@ const int MAX_TICK[5]    = {540, 545, 545, 533, 540};
 const float MIN_ANGLE[5]   = {0.0f, 0.0f, 0.0f, 0.0f, 167.5f};
 const float MAX_ANGLE[5]   = {180.0f, 150.0f, 180.0f, 180.0f, 180.0f};
 const float HOMING[5]      = {90.0f, 140.0f, 180.0f, 0.0f, 180.0f};
+const float HOMING_XYZPHI[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 const int servoArray[5]  = {0, 1, 2, 3, 4};
 
 //IMPORTANT SERVO VALUES
