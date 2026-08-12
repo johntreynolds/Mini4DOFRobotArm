@@ -45,14 +45,17 @@ class MovementControl
             //void telemetry();
 
             // TO BE COMPLETED
-            //bool processWebTarget(float x, float y, float z, float phi);
             bool rotateAroundXYZ(float x, float y, float z, float phiMin, float phiMax);
 
             // OPMODE HANDLING
             bool manualCompute(float x, float y, float z, float phi);
             bool runManualXYZ(float x, float y, float z, float phi, float clawPercent);
             bool runLiveSliders(float x, float y, float z, float phi, float clawPercent);
-            void remoteControl(); //TO BE COMPLETED LATER
+            bool manualAngleMove(float turret, float shoulder, float elbow, float wrist, float claw);
+
+            // SINGLE RC CONTROL METHOD
+            void handleRCCommand(const RCInputs& rc, float deltaTime);
+            void syncRCTargetsFromCurrentPose();
 
             // CLAW CONTROl
             void moveClaw(float percent);
@@ -72,6 +75,15 @@ class MovementControl
 
             bool _isEStopped = false;
             uint8_t _currentOpMode = 0;
+
+            float _deadzone = 0.1f;
+            float applyDeadzone(float input);
+
+            float targetR = 100;
+            float targetZ = 100;
+            float targetThetaT = 90;
+            float targetPhi = 90;
+            float targetClaw = 180;
 
     };
 

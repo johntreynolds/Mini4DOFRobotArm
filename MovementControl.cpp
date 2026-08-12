@@ -17,10 +17,25 @@ void MovementControl::begin(int freq)
 void MovementControl::homeArm()
   {
     pd.resetPDToHome();
+    IKInput homeState = ik.solveFullArmDK(HOMING[0], HOMING[1], HOMING[2], HOMING[3]);
+
+    input.x = homeState.x;
+    input.y = homeState.y;
+    input.z = homeState.z;
+    input.phi = homeState.phi;
+    input.hasPhi = homeState.hasPhi;
+    angles.turret   = HOMING[0];
+    angles.shoulder = HOMING[1];
+    angles.elbow    = HOMING[2];
+    angles.wrist    = HOMING[3];
+    angles.claw     = HOMING[4];
+
     for (int i = 0; i < 5; i++)
       {
         turnServo(i, HOMING[i]);
-      }
+      } 
+    
+    webServer.sendTelemetry(input.x, input.y, input.z, input.phi, angles.turret, angles.shoulder, angles.elbow, angles.wrist, angles.claw);
     webServer.log("Robot Homed");
   }
 
@@ -39,11 +54,6 @@ void MovementControl::turnServo(int channel, float angle)
 
 void MovementControl::moveAllServos()
   {
-    if (_isEStopped)
-      {
-        return;
-      }
-    
     for (int i = 0; i < 5; i++)
       {
         pd.pdServoMath(i);
@@ -239,37 +249,6 @@ void MovementControl::ikTestBox()
 // --------------------------------- MOVEMENT HANDLING ----------------------------
 
 /*
-
-bool MovementControl::processWebTarget(float x, float y, float z, float phi) 
-  {
-    // Pass 4 arguments and receive ArmAngles directly:
-    ArmAngles targetAngles = ik.solveFullArmPhi(x, y, z, phi);
-
-    IKStatus status = ik.validateAngles(targetAngles);
-    if (status != IK_OK)
-      {
-        Serial.print("[IK ERROR] Web target unreachable, status code: ");
-        Serial.println(status);
-        return false;   // Safety: do not write to servos
-      }
-
-    // Update member variables
-    angles = targetAngles;
-    input.x = x;
-    input.y = y;
-    input.z = z;
-    input.phi = phi;
-    input.hasPhi = true;
-
-    // Update PID target angles
-    pd.setTargetPD(0, angles.turret);
-    pd.setTargetPD(1, angles.shoulder);
-    pd.setTargetPD(2, angles.elbow);
-    pd.setTargetPD(3, angles.wrist);
-
-    return true;
-  }
-
 */
 
 void MovementControl::emergencyStop()
@@ -295,18 +274,10 @@ void MovementControl::setOpMode(uint8_t mode)
         return;
       }
     _currentOpMode = mode;
-    //OPMODE CHANGED TEXT
 
-    switch (_currentOpMode)
+    if (_currentOpMode == RobotWebServer::OPMODE_REMOTE_CONTROL)
       {
-        case 0: // OPMODE_MANUAL_XYZ
-            break;
-        case 1: // OPMODE_LIVE_SLIDERS
-            break;
-        case 2: // OPMODE_INFINITE_BALL
-            break;
-        default:
-            break;
+        syncRCTargetsFromCurrentPose();
       }
   }
 
@@ -393,7 +364,170 @@ bool MovementControl::runLiveSliders(float x, float y, float z, float phi, float
     return true;
   }
 
-void MovementControl::remoteControl()
+bool MovementControl::manualAngleMove(float turret, float shoulder, float elbow, float wrist, float claw)
   {
+    if (_isEStopped)
+      {
+        return false;
+      }
 
+    IKInput dk = ik.solveFullArmDK(turret, shoulder, elbow, wrist);
+
+    angles.turret   = turret;
+    angles.shoulder = shoulder;
+    angles.elbow    = elbow;
+    angles.wrist    = wrist;
+    angles.claw     = claw;
+
+    input.x = dk.x;
+    input.y = dk.y;
+    input.z = dk.z;
+    input.phi = dk.phi;
+    input.hasPhi = dk.hasPhi;
+
+    webServer.sendTelemetry(dk.x, dk.y, dk.z, dk.phi, turret, shoulder, elbow, wrist, claw);
+
+    turnServo(0, turret);
+    turnServo(1, shoulder);
+    turnServo(2, elbow);
+    turnServo(3, wrist);
+    turnServo(4, claw);
+
+    pd.setTargetPD(0, turret);
+    pd.setTargetPD(1, shoulder);
+    pd.setTargetPD(2, elbow);
+    pd.setTargetPD(3, wrist);
+
+    return true;
+  }
+
+// -------------------------------------------- RC MODE ---------------------------------------
+
+float MovementControl::applyDeadzone(float input) 
+  {
+    if (abs(input) < _deadzone) {
+        return 0.0f;
+    }
+    return input;
+  }
+
+void MovementControl::syncRCTargetsFromCurrentPose() 
+  {
+    // Derive initial R and ThetaT targets from current X, Y, Z, Phi
+    targetThetaT = angles.turret;
+    targetZ = input.z;
+    targetPhi = input.phi;
+    targetR = sqrt((input.x * input.x) + (input.y * input.y));
+    targetClaw = angles.claw;
+  }
+
+void MovementControl::handleRCCommand(const RCInputs& rc, float deltaTime) 
+  {
+    // 1. Immediate E-Stop Check ('B' Button)
+    if (rc.btnEStop) 
+      {
+        emergencyStop();
+        return;
+      }
+
+    if (_isEStopped || _currentOpMode != RobotWebServer::OPMODE_REMOTE_CONTROL) 
+      { 
+        return;
+      }
+
+    // 2. Home Arm Check ('X' Button)
+    if (rc.btnHome) 
+      {
+        homeArm();
+        syncRCTargetsFromCurrentPose(); // Keep RC targets aligned with home pose
+        return;
+      }
+
+    // =========================================================================
+    // STEP A: Store current targets before applying joystick increments
+    // =========================================================================
+    float prevTargetR      = targetR;
+    float prevTargetZ      = targetZ;
+    float prevTargetThetaT = targetThetaT;
+    float prevTargetPhi    = targetPhi;
+
+    // 3. Process Analog Sticks (Left Stick: R/Z, Right Stick: Turret)
+    float moveR      = applyDeadzone(rc.lx);
+    float moveZ      = applyDeadzone(rc.ly);
+    float moveTurret = applyDeadzone(rc.rx);
+
+    float speedR      = 80.0f; // mm / sec
+    float speedZ      = 80.0f; // mm / sec
+    float speedTurret = 60.0f; // deg / sec
+
+    targetR      += moveR * speedR * deltaTime;
+    targetZ      += moveZ * speedZ * deltaTime;
+    targetThetaT += moveTurret * speedTurret * deltaTime;
+
+    const float MIN_ARM_REACH_MM = 30.0f;
+    const float MAX_ARM_REACH_MM = L1 + L2 + L3; // Set this below the physical limit where IK breaks
+
+    targetR      = constrain(targetR, MIN_ARM_REACH_MM, MAX_ARM_REACH_MM);
+    targetZ      = constrain(targetZ, -100.0f, 180.0f);
+    targetThetaT = constrain(targetThetaT, 0.0f, 180.0f);
+
+    // 4. Process D-Pad for Pitch Angle (Phi)
+    float speedPhi = 45.0f; // deg / sec
+    if (rc.dpadUp) 
+      {
+        targetPhi += speedPhi * deltaTime;
+      }
+    if (rc.dpadDown) 
+      {
+        targetPhi -= speedPhi * deltaTime;
+      }
+    targetPhi = constrain(targetPhi, 0.0f, 180.0f);
+
+    // 5. Process Triggers/Bumpers for Claw Differential
+    float speedClaw = 90.0f; // deg / sec
+    if (rc.openClaw > 0.05f) 
+      {
+        targetClaw -= rc.openClaw * speedClaw * deltaTime;
+      }
+    if (rc.closeClaw > 0.05f) 
+      {
+        targetClaw += rc.closeClaw * speedClaw * deltaTime;
+      }
+    targetClaw = constrain(targetClaw, MIN_ANGLE[4], MAX_ANGLE[4]);
+
+    // 6. Compute Cylindrical IK directly via IKMath instance
+    ArmAngles targetAngles = ik.manualComputeRZ(targetThetaT, targetR, targetZ, targetPhi);
+
+    // 7. Validate & Execute
+    IKStatus status = ik.validateAngles(targetAngles);
+    if (status == IK_OK)
+      {
+        angles = targetAngles;
+        input.x = targetR; 
+        input.y = 0.0f; 
+        input.z = targetZ; 
+        input.phi = targetPhi; 
+        input.hasPhi = true;
+
+        pd.setTargetPD(0, angles.turret);
+        pd.setTargetPD(1, angles.shoulder);
+        pd.setTargetPD(2, angles.elbow);
+        pd.setTargetPD(3, angles.wrist);
+
+        moveAllServos();
+        turnServo(4, targetClaw); // Update claw
+      }
+    else
+      {
+        // =========================================================================
+        // STEP B: Restore previous targets so numbers don't change on failure
+        // =========================================================================
+        targetR      = prevTargetR;
+        targetZ      = prevTargetZ;
+        targetThetaT = prevTargetThetaT;
+        targetPhi    = prevTargetPhi;
+
+        webServer.logf("[IK ERROR] Target (T=%.1f, R=%.1f, Z=%.1f) unreachable! Code: %d\n", 
+                       targetThetaT, targetR, targetZ, status);
+      }
   }

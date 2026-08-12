@@ -6,8 +6,10 @@
 #include <ESPAsyncWebServer.h>
 #include <AsyncTCP.h>
 #include "ServoConstants.h"
+#include "CoreTypes.h"
+#include "MovementControl.h"
 
-// OpMode Definitions
+class MovementControl;
 
 class RobotWebServer
   {
@@ -16,8 +18,10 @@ class RobotWebServer
         {
           OPMODE_MANUAL_XYZ = 0,
           OPMODE_LIVE_SLIDERS = 1,
-          OPMODE_REMOTE_CONTROL = 2
+          OPMODE_REMOTE_CONTROL = 2,
+          OPMODE_ANGLE_TESTING = 3
         };
+
       RobotWebServer(const char* ssid = "Mini4DOFRobotArm", const char* password = "ROBOT1234");
 
       // Web Server Actions
@@ -31,38 +35,43 @@ class RobotWebServer
 
       // State Commands
       bool getNewTarget(float &x, float &y, float &z, float &phi, float &claw);
-      bool isEStopActive();
+      bool getManualAngles(float &turret, float &shoulder, float &elbow, float &wrist, float &claw);
       bool checkHomeRequest();
       bool checkOpModeChanged(OpMode &newMode);
 
-      
+      bool getRCInputs(RCInputs &outRC);
 
     private:
       AsyncWebServer _server;
       AsyncWebSocket _ws;
       const char* _ssid;
       const char* _password;
+      OpMode _currentOpMode = OPMODE_MANUAL_XYZ;
+
+      // Target Storage
+      float _targetX = 0;
+      float _targetY = 100;
+      float _targetZ = 100;
+      float _targetPhi = 90;
+      float _targetClaw = 180;
+
+      //Contol Flags
+      bool _hasNewCommand = false;
+      bool _homeRequested = false;
+      bool _opModeChanged = false;
+      bool _hasNewManualCommand = false;
+
+      ArmAngles _manualAngles;
 
       unsigned long _lastTelemetrySend = 0;
       const unsigned long TELEMETRY_INTERVAL_MS = 100;
       uint16_t _port;
 
-      // Target Storage
-      float _targetX;
-      float _targetY;
-      float _targetZ;
-      float _targetPhi;
-      float _targetClaw;
-
-      //Contol Flags
-      bool _hasNewCommand = false;
-      bool _eStopActive = false;
-      bool _homeRequested = false;
-      bool _opModeChanged = false;
-
-      OpMode _currentOpMode = OPMODE_MANUAL_XYZ;
-
       void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
+
+      MovementControl* _controller = nullptr;
+      RCInputs _rcInputs{};
+      bool _hasNewRC = false;
   };
 
 #endif

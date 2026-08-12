@@ -37,22 +37,10 @@ void loop()
     // WEB SERVER UPDATES
     webServer.updateWebServer();
 
-    // CHECK E STOP
-    if (webServer.isEStopActive())
+    if (controller.isEStopped()) 
       {
-        if (!controller.isEStopped())
-          {
-            controller.emergencyStop();
-          }
-        return;
-        
-      }
-    else
-      {
-        if (controller.isEStopped())
-          {
-            controller.releaseEStop();
-          }
+        // Arm is E-Stopped; do not execute motion or IK updates
+        return; 
       }
 
     // Check for OpMode Changes
@@ -70,23 +58,56 @@ void loop()
       }
 
     // Process OpModes and Motion Commands
-
-    float targetX, targetY, targetZ, targetPhi, targetClaw;
-    if (webServer.getNewTarget(targetX, targetY, targetZ, targetPhi, targetClaw)) 
-      {
-        switch (currentMode) 
+    
+    switch (currentMode) 
+    {
+        case RobotWebServer::OPMODE_MANUAL_XYZ: 
           {
-            case RobotWebServer::OPMODE_MANUAL_XYZ:
-              controller.runManualXYZ(targetX, targetY, targetZ, targetPhi, targetClaw);
-              break;
-            case RobotWebServer::OPMODE_LIVE_SLIDERS:
-              controller.runLiveSliders(targetX, targetY, targetZ, targetPhi, targetClaw);
-              break;
-            case RobotWebServer::OPMODE_REMOTE_CONTROL:
-              controller.remoteControl();
-              break;
+            float targetX, targetY, targetZ, targetPhi, targetClaw;
+            if (webServer.getNewTarget(targetX, targetY, targetZ, targetPhi, targetClaw)) 
+              {
+                controller.runManualXYZ(targetX, targetY, targetZ, targetPhi, targetClaw);
+              }
+            break;
           }
-      }
+
+        case RobotWebServer::OPMODE_LIVE_SLIDERS: 
+          {
+            float targetX, targetY, targetZ, targetPhi, targetClaw;
+            if (webServer.getNewTarget(targetX, targetY, targetZ, targetPhi, targetClaw)) 
+              {
+                controller.runLiveSliders(targetX, targetY, targetZ, targetPhi, targetClaw);
+              }
+            break;
+          }
+
+        case RobotWebServer::OPMODE_REMOTE_CONTROL: 
+          {
+            static unsigned long lastTime = 0;
+            unsigned long now = millis();
+            float deltaTime = (now - lastTime) / 1000.0f;
+            lastTime = now;
+
+            RCInputs rc;
+            if (webServer.getRCInputs(rc))
+              {
+                controller.handleRCCommand(rc, deltaTime);
+              }
+            controller.handleRCCommand(rc, deltaTime);
+            break;
+          }
+
+        case RobotWebServer::OPMODE_ANGLE_TESTING: 
+          {
+            float t, s, e, w, c;
+            // Check manual angles directly!
+            if (webServer.getManualAngles(t, s, e, w, c)) 
+              {
+                controller.manualAngleMove(t, s, e, w, c);
+              }
+            break;
+          }
+    }
 
     // Send Telemetry to Board
     // SEND TELEMETRY TO WEB CLIENT

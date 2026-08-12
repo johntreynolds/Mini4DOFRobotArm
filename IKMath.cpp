@@ -189,6 +189,17 @@ ArmAngles IKMath::solveFullArmPhi(float x, float y, float z, float phi)
  
   }
 
+ArmAngles IKMath::manualComputeRZ(float turret, float r, float z, float phi)
+  {
+    // Solve 2D reach using R directly as X (with Y = 0)
+    ArmAngles targetAngles = solveFullArmPhi(r, 0.0f, z, phi);
+
+    // Override turret directly from input theta
+    targetAngles.turret = turret;
+
+    return targetAngles;  
+  }
+
 IKStatus IKMath::validateAngles(const ArmAngles &a)
   {
     if (a.status == IK_TOO_FAR)
@@ -220,3 +231,43 @@ IKStatus IKMath::validateAngles(const ArmAngles &a)
   }
 
 // ------------------------------------- DIRECT KINEMATICS ---------------------------------
+
+IKInput IKMath::solveFullArmDK(float thetaT, float theta1, float theta2, float theta3)
+  {
+    IKInput dk;
+
+    // Variable Setup
+    float shoulderOffset = abs(shoulderColinear - 90.0f);
+    float elbowOffset = abs(elbowColinear - 90.0f);
+    float alphaBeta = theta1 - shoulderOffset;
+    float gamma = 270.0f - elbowOffset - theta2;
+    float gammaMini = alphaBeta + gamma - 180;
+
+    // Piece-by-piece math
+    float ze = sin(alphaBeta * DEG_TO_RAD) * L1;
+    float re = cos(alphaBeta * DEG_TO_RAD) * L1;
+    float zw = ze + sin(gammaMini * DEG_TO_RAD) * L2;
+    float rw = re + cos(gammaMini * DEG_TO_RAD) * L2;
+
+    // Mid Variables
+    float alpha = atan2(zw, rw) * RAD_TO_DEG;
+    float beta = alphaBeta - alpha;
+    float chi = 90.0f - alpha;
+    float delta = 180.0f - gamma - beta;
+    float phi = theta3 - delta - chi + 90.0f;
+
+    float z = zw + cos(phi * DEG_TO_RAD) * L3;
+    float r = rw + sin(phi * DEG_TO_RAD) *L3;
+
+    float x = r * cos(thetaT * DEG_TO_RAD);
+    float y = r * sin(thetaT * DEG_TO_RAD);
+
+    dk.x = x;
+    dk.y = y;
+    dk.z = z;
+    dk.phi = phi;
+    dk.hasPhi = true;
+
+    return dk;
+
+  }
