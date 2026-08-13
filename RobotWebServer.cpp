@@ -275,7 +275,6 @@ function sendHome() {
     const z = parseFloat(document.getElementById('sldZ')?.value || 50);
     const phi = parseFloat(document.getElementById('sldPhi')?.value || 0);
     const pct = parseFloat(document.getElementById('sldClaw')?.value || 0);
-    const minAngle = parseFloat(document.getElementById('clawMinAngle1')?.value || 0);
 
     // Fixed text readout targets
     document.getElementById('valX').innerText = x + " mm";
@@ -289,7 +288,7 @@ function sendHome() {
         lastSliderSendTime = now;
         websocket.send(JSON.stringify({
             type: "target",
-            x: x, y: y, z: z, phi: phi, claw: (180 - ((180 - minAngle) * (pct / 100.0)))
+            x: x, y: y, z: z, phi: phi, claw: pct
         }));
     } else {
         clearTimeout(sliderSendTimer);
@@ -320,37 +319,33 @@ function sendHome() {
             // Read triggers (buttons 6 and 7 in standard Gamepad API)
 const leftTrigger  = gp.buttons[6] ? gp.buttons[6].value : 0; // Close claw
 const rightTrigger = gp.buttons[7] ? gp.buttons[7].value : 0; // Open claw
-
-// Calculate percentage: 
-// Right trigger opens toward 100%, Left trigger closes toward 0%
-// If unpressed, defaults to 0% (or your current static position)
 let clawPct = Math.max(0, Math.min(100, (rightTrigger - leftTrigger) * 100));
+
+const lx = deadzone(gp.axes[0] || 0);
+const ly = deadzone(-(gp.axes[1] || 0));
+const rx = deadzone(gp.axes[2] !== undefined ? gp.axes[2] : (gp.axes[3] || 0));
+const ltVal = gp.buttons[6] ? gp.buttons[6].value : 0;
+const rtVal = gp.buttons[7] ? gp.buttons[7].value : 0;
+const dUp    = gp.buttons[12] ? gp.buttons[12].pressed : false;
+const dDown  = gp.buttons[13] ? gp.buttons[13].pressed : false;
+const dLeft  = gp.buttons[14] ? gp.buttons[14].pressed : false;
+const dRight = gp.buttons[15] ? gp.buttons[15].pressed : false;
 
 const rcPayload = {
     type: "rc_input",
     lx: gp.axes[0],
     ly: gp.axes[1],
     rx: gp.axes[2],
-    clawPct: clawPct
+    clawPct: clawPct,
+    dpadUp: dUp,
+    dpadDown: dDown,
+    btnHome: gp.buttons[9] ? gp.buttons[9].pressed : false,   // adjust indices to your pad
+    btnEStop: gp.buttons[8] ? gp.buttons[8].pressed : false,
+    openClaw: rtVal,
+    closeClaw: ltVal
 };
 
 websocket.send(JSON.stringify(rcPayload));
-
-            // 1. Raw Stick Inputs
-            const lx = deadzone(gp.axes[0] || 0);
-            const ly = deadzone(-(gp.axes[1] || 0)); // Invert Y
-            const rx = deadzone(gp.axes[2] !== undefined ? gp.axes[2] : (gp.axes[3] || 0));
-            const ry = deadzone(-(gp.axes[5] !== undefined ? gp.axes[5] : (gp.axes[4] || 0)));
-
-            // 2. Raw Triggers (Continuous 0.0 to 1.0)
-            const ltVal = gp.buttons[6] ? gp.buttons[6].value : 0;
-            const rtVal = gp.buttons[7] ? gp.buttons[7].value : 0;
-
-            // 3. Raw D-Pad Inputs
-            const dUp    = gp.buttons[12] ? gp.buttons[12].pressed : false;
-            const dDown  = gp.buttons[13] ? gp.buttons[13].pressed : false;
-            const dLeft  = gp.buttons[14] ? gp.buttons[14].pressed : false;
-            const dRight = gp.buttons[15] ? gp.buttons[15].pressed : false;
 
             // Update Box 1 UI
             const dbgLX = document.getElementById('dbgLX');
@@ -405,14 +400,14 @@ websocket.send(JSON.stringify(rcPayload));
         const z = parseFloat(document.getElementById('numZ')?.value || 0);
         const phi = parseFloat(document.getElementById('numPhi')?.value || 0);
         const pct = parseFloat(document.getElementById('numClawPct0')?.value || 0);
-        const minAngle = parseFloat(document.getElementById('clawMinAngle0')?.value || 0);
 
-        if (websocket && websocket.readyState === WebSocket.OPEN) {
+        if (websocket && websocket.readyState === WebSocket.OPEN) 
+          {
             websocket.send(JSON.stringify({
                 type: "target",
-                x: x, y: y, z: z, phi: phi, claw: (180 - ((180 - minAngle) * (pct / 100.0)))
+                x: x, y: y, z: z, phi: phi, claw: pct   // send raw percent; moveClaw() on the ESP32 does the real mapping
             }));
-        }
+          }
     }
 
     function sendManualAngles() {
@@ -477,276 +472,258 @@ websocket.send(JSON.stringify(rcPayload));
 
 //--------------------------------WEB CODE----------------------------------------
 
-RobotWebServer::RobotWebServer(const char* ssid, const char* password)
-  : _ssid(ssid), _password(password), _server(80), _ws("/ws")
-  {
-
-  }
+RobotWebServer::RobotWebServer(const char *ssid, const char *password)
+  : _ssid(ssid), _password(password), _server(80), _ws("/ws") {
+}
 
 // --------------------------------------------------- SETUP --------------------------------------------
 
 void RobotWebServer::onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
-    if (type == WS_EVT_DATA) {
-        AwsFrameInfo *info = (AwsFrameInfo*)arg;
-        if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
-            data[len] = 0; // Null-terminate incoming packet
-            String msg = String((char*)data);
+  if (type == WS_EVT_DATA) {
+    AwsFrameInfo *info = (AwsFrameInfo *)arg;
+    if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
+      data[len] = 0;  // Null-terminate incoming packet
+      String msg = String((char *)data);
 
-            // Robust JSON value extraction lambda
-            auto getJsonVal = [&msg](const char* key) -> float {
-                int idx = msg.indexOf(key);
-                if (idx == -1) return 0.0f;
-                int start = msg.indexOf(':', idx);
-                if (start == -1) return 0.0f;
-                start++; // Skip past ':'
-                int end = msg.indexOf(',', start);
-                if (end == -1) end = msg.indexOf('}', start);
-                if (end == -1) return 0.0f;
-                
-                String valStr = msg.substring(start, end);
-                valStr.trim();
-                if (valStr == "true") return 1.0f;
-                if (valStr == "false") return 0.0f;
-                return valStr.toFloat();
-            };
+      // Robust JSON value extraction lambda
+      auto getJsonVal = [&msg](const char *key) -> float {
+        int idx = msg.indexOf(key);
+        if (idx == -1) return 0.0f;
+        int start = msg.indexOf(':', idx);
+        if (start == -1) return 0.0f;
+        start++;  // Skip past ':'
+        int end = msg.indexOf(',', start);
+        if (end == -1) end = msg.indexOf('}', start);
+        if (end == -1) return 0.0f;
 
-            // -------------------------------------------------------------
-            // 1. Direct Emergency Stop Trigger
-            // -------------------------------------------------------------
-            if (msg.indexOf("\"type\":\"estop\"") != -1) {
-                bool state = (getJsonVal("\"state\"") > 0.5f);
-                if (_controller) {
-                    if (state) {
-                        _controller->emergencyStop();
-                    } else {
-                        _controller->releaseEStop();
-                    }
-                }
-                return;
-            }
+        String valStr = msg.substring(start, end);
+        valStr.trim();
+        if (valStr == "true") return 1.0f;
+        if (valStr == "false") return 0.0f;
+        return valStr.toFloat();
+      };
 
-            // Lock out all other incoming web processing if E-stop is active
-            if (_controller && _controller->isEStopped()) {
-                return;
-            }
-
-            // -------------------------------------------------------------
-            // 2. Bluetooth Gamepad / RC Inputs
-            // -------------------------------------------------------------
-            if (msg.indexOf("\"type\":\"rc_input\"") != -1) {
-                RCInputs rc{};
-
-                // Extract analog axes
-                rc.lx = getJsonVal("\"lx\"");
-                rc.ly = getJsonVal("\"ly\"");
-                rc.rx = getJsonVal("\"rx\"");
-
-                // Extract buttons
-                rc.dpadUp    = (getJsonVal("\"dpadUp\"") > 0.5f);
-                rc.dpadDown  = (getJsonVal("\"dpadDown\"") > 0.5f);
-                rc.openClaw  = getJsonVal("\"openClaw\"");
-                rc.closeClaw = getJsonVal("\"closeClaw\"");
-                rc.btnHome   = (getJsonVal("\"btnHome\"") > 0.5f);
-                rc.btnEStop  = (getJsonVal("\"btnEStop\"") > 0.5f);
-
-                // Immediate hard-stop if E-Stop button pressed on Gamepad
-                if (rc.btnEStop && _controller) {
-                    _controller->emergencyStop();
-                }
-
-                // Forward claw percent directly to controller if provided
-                float clawPct = getJsonVal("\"clawPct\"");
-                if (_controller && (rc.openClaw > 0.0f || rc.closeClaw > 0.0f)) {
-                    _controller->moveClaw(clawPct);
-                }
-
-                _rcInputs = rc;
-                _hasNewRC = true;
-                return;
-            }
-
-            // -------------------------------------------------------------
-            // 3. Home Arm Command
-            // -------------------------------------------------------------
-            if (msg.indexOf("\"type\":\"home\"") != -1) {
-                _homeRequested = true;
-                return;
-            }      
-
-            // -------------------------------------------------------------
-            // 4. Operation Mode Switcher
-            // -------------------------------------------------------------
-            if (msg.indexOf("\"type\":\"opmode\"") != -1) {
-                int modeVal = static_cast<int>(getJsonVal("\"mode\""));
-                _currentOpMode = static_cast<OpMode>(modeVal);
-                _opModeChanged = true;
-                return;
-            }
-
-            // -------------------------------------------------------------
-            // 5. XYZ Cartesian Target Coordinates
-            // -------------------------------------------------------------
-            if (msg.indexOf("\"type\":\"target\"") != -1) {
-                _targetX    = getJsonVal("\"x\"");
-                _targetY    = getJsonVal("\"y\"");
-                _targetZ    = getJsonVal("\"z\"");
-                _targetPhi  = getJsonVal("\"phi\"");
-                _targetClaw = getJsonVal("\"claw\"");
-                _hasNewCommand = true;
-                return;
-            }
-
-            // -------------------------------------------------------------
-            // 6. Direct Joint Angle Command (Testing Mode)
-            // -------------------------------------------------------------
-            if (msg.indexOf("\"type\":\"manual_angles\"") != -1) {
-                float t = getJsonVal("\"turret\"");
-                float s = getJsonVal("\"shoulder\"");
-                float e = getJsonVal("\"elbow\"");
-                float w = getJsonVal("\"wrist\"");
-                float c = getJsonVal("\"claw\"");
-                _manualAngles = {t, s, e, w, c};
-                _hasNewManualCommand = true;
-                return;
-            }
+      // -------------------------------------------------------------
+      // 1. Direct Emergency Stop Trigger
+      // -------------------------------------------------------------
+      if (msg.indexOf("\"type\":\"estop\"") != -1) {
+        bool state = (getJsonVal("\"state\"") > 0.5f);
+        if (_controller) {
+          if (state) {
+            _controller->emergencyStop();
+          } else {
+            _controller->releaseEStop();
+          }
         }
+        return;
+      }
+
+      // Lock out all other incoming web processing if E-stop is active
+      if (_controller && _controller->isEStopped()) {
+        return;
+      }
+
+      // -------------------------------------------------------------
+      // 2. Bluetooth Gamepad / RC Inputs
+      // -------------------------------------------------------------
+      if (msg.indexOf("\"type\":\"rc_input\"") != -1) {
+        RCInputs rc{};
+
+        // Extract analog axes
+        rc.lx = getJsonVal("\"lx\"");
+        rc.ly = getJsonVal("\"ly\"");
+        rc.rx = getJsonVal("\"rx\"");
+
+        // Extract buttons
+        rc.dpadUp = (getJsonVal("\"dpadUp\"") > 0.5f);
+        rc.dpadDown = (getJsonVal("\"dpadDown\"") > 0.5f);
+        rc.openClaw = getJsonVal("\"openClaw\"");
+        rc.closeClaw = getJsonVal("\"closeClaw\"");
+        rc.btnHome = (getJsonVal("\"btnHome\"") > 0.5f);
+        rc.btnEStop = (getJsonVal("\"btnEStop\"") > 0.5f);
+
+        // Immediate hard-stop if E-Stop button pressed on Gamepad
+        if (rc.btnEStop && _controller) {
+          _controller->emergencyStop();
+        }
+
+        // Forward claw percent directly to controller if provided
+        float clawPct = getJsonVal("\"clawPct\"");
+        if (_controller && (rc.openClaw > 0.0f || rc.closeClaw > 0.0f)) {
+          _controller->moveClaw(clawPct);
+        }
+
+        _rcInputs = rc;
+        _hasNewRC = true;
+        return;
+      }
+
+      // -------------------------------------------------------------
+      // 3. Home Arm Command
+      // -------------------------------------------------------------
+      if (msg.indexOf("\"type\":\"home\"") != -1) {
+        _homeRequested = true;
+        return;
+      }
+
+      // -------------------------------------------------------------
+      // 4. Operation Mode Switcher
+      // -------------------------------------------------------------
+      if (msg.indexOf("\"type\":\"opmode\"") != -1) {
+        int modeVal = static_cast<int>(getJsonVal("\"mode\""));
+        _currentOpMode = static_cast<OpMode>(modeVal);
+        _opModeChanged = true;
+        return;
+      }
+
+      // -------------------------------------------------------------
+      // 5. XYZ Cartesian Target Coordinates
+      // -------------------------------------------------------------
+      if (msg.indexOf("\"type\":\"target\"") != -1) {
+        _targetX = getJsonVal("\"x\"");
+        _targetY = getJsonVal("\"y\"");
+        _targetZ = getJsonVal("\"z\"");
+        _targetPhi = getJsonVal("\"phi\"");
+        _targetClaw = getJsonVal("\"claw\"");
+        _hasNewCommand = true;
+        return;
+      }
+
+      // -------------------------------------------------------------
+      // 6. Direct Joint Angle Command (Testing Mode)
+      // -------------------------------------------------------------
+      if (msg.indexOf("\"type\":\"manual_angles\"") != -1) {
+        float t = getJsonVal("\"turret\"");
+        float s = getJsonVal("\"shoulder\"");
+        float e = getJsonVal("\"elbow\"");
+        float w = getJsonVal("\"wrist\"");
+        float c = getJsonVal("\"claw\"");
+        _manualAngles = { t, s, e, w, c };
+        _hasNewManualCommand = true;
+        return;
+      }
     }
+  }
 }
 
-void RobotWebServer::beginWebServer()
-  {
-    WiFi.softAP(_ssid, _password);
+void RobotWebServer::beginWebServer() {
+  WiFi.softAP(_ssid, _password);
 
-    Serial.print("[WebServer] Access Point Started! IP: ");
-    Serial.println(WiFi.softAPIP());
+  Serial.print("[WebServer] Access Point Started! IP: ");
+  Serial.println(WiFi.softAPIP());
 
-    // Bind WebSocket event listener
-    _ws.onEvent([this](AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
-        this->onWsEvent(server, client, type, arg, data, len);
-    });
-    
-    _server.addHandler(&_ws);
+  // Bind WebSocket event listener
+  _ws.onEvent([this](AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
+    this->onWsEvent(server, client, type, arg, data, len);
+  });
 
-    _server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) 
-      {
-        request->send_P(200, "text/html", HTML_PAGE);
-      });
+  _server.addHandler(&_ws);
 
-    _server.begin();
-    Serial.println("[WebServer] HTTP Server Listening.");
-  }
+  _server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send_P(200, "text/html", HTML_PAGE);
+  });
+
+  _server.begin();
+  Serial.println("[WebServer] HTTP Server Listening.");
+}
 
 // ------------------------------------------- UPDATE ------------------------------------
 
-void RobotWebServer::updateWebServer()
-  {
-    _ws.cleanupClients();
-    
-  }
+void RobotWebServer::updateWebServer() {
+  _ws.cleanupClients();
+}
 
 // ----------------------------- SEND TELEMETRY --------------------------------------------
 
-void RobotWebServer::sendTelemetry(float x, float y, float z, float phi, float turretDeg, float shoulderDeg, float elbowDeg, float wristDeg, float clawDeg)
-  {
-    unsigned long currentMillis = millis();
-    if (currentMillis - _lastTelemetrySend >= TELEMETRY_INTERVAL_MS) {
-        _lastTelemetrySend = currentMillis;
+void RobotWebServer::sendTelemetry(float x, float y, float z, float phi, float turretDeg, float shoulderDeg, float elbowDeg, float wristDeg, float clawDeg) {
+  unsigned long currentMillis = millis();
+  if (currentMillis - _lastTelemetrySend >= TELEMETRY_INTERVAL_MS) {
+    _lastTelemetrySend = currentMillis;
 
-        if (_ws.count() > 0) {
-            // Format telemetry JSON including both XYZ-Phi and Joint Angles
-            char buffer[200];
-            snprintf(buffer, sizeof(buffer), 
-                "{\"X\":%.1f,\"Y\":%.1f,\"Z\":%.1f,\"PHI\":%.1f,\"Turret\":%.1f,\"Shoulder\":%.1f,\"Elbow\":%.1f,\"Wrist\":%.1f,\"Claw\":%.1f}", 
-                x, y, z, phi, turretDeg, shoulderDeg, elbowDeg, wristDeg, clawDeg);
-            
-            _ws.textAll(buffer);
-        }
+    if (_ws.count() > 0) {
+      // Format telemetry JSON including both XYZ-Phi and Joint Angles
+      char buffer[200];
+      snprintf(buffer, sizeof(buffer),
+               "{\"X\":%.1f,\"Y\":%.1f,\"Z\":%.1f,\"PHI\":%.1f,\"Turret\":%.1f,\"Shoulder\":%.1f,\"Elbow\":%.1f,\"Wrist\":%.1f,\"Claw\":%.1f}",
+               x, y, z, phi, turretDeg, shoulderDeg, elbowDeg, wristDeg, clawDeg);
+
+      _ws.textAll(buffer);
     }
   }
+}
 
-void RobotWebServer::log(const String &message) 
-  {
-    // Also print to actual USB Serial for debugging during dev
-    Serial.println(message);
+void RobotWebServer::log(const String &message) {
+  // Also print to actual USB Serial for debugging during dev
+  Serial.println(message);
 
-    // Prefix with [LOG] so the HTML JavaScript knows it's a console string
-    String payload = "[LOG] " + message;
-    
-    // Broadcast to all connected WebSocket clients
-    _ws.textAll(payload);
-  }
+  // Prefix with [LOG] so the HTML JavaScript knows it's a console string
+  String payload = "[LOG] " + message;
 
-void RobotWebServer::logf(const char *format, ...) 
-  {
-    char buffer[256];
-    va_list args;
-    va_start(args, format);
-    vsnprintf(buffer, sizeof(buffer), format, args);
-    va_end(args);
-    
-    log(String(buffer));
-  }
+  // Broadcast to all connected WebSocket clients
+  _ws.textAll(payload);
+}
+
+void RobotWebServer::logf(const char *format, ...) {
+  char buffer[256];
+  va_list args;
+  va_start(args, format);
+  vsnprintf(buffer, sizeof(buffer), format, args);
+  va_end(args);
+
+  log(String(buffer));
+}
 
 // --------------------------- NEW TARGET --------------------------------
 
-bool RobotWebServer::getNewTarget(float &x, float &y, float &z, float &phi, float &claw)
-  {
-    if (_hasNewCommand) 
-      {
-        x = _targetX;
-        y = _targetY;
-        z = _targetZ;
-        phi = _targetPhi;
-        claw = _targetClaw;
-        _hasNewCommand = false; // Reset flag after reading
-        return true;
-      }
-
-    return false;
+bool RobotWebServer::getNewTarget(float &x, float &y, float &z, float &phi, float &claw) {
+  if (_hasNewCommand) {
+    x = _targetX;
+    y = _targetY;
+    z = _targetZ;
+    phi = _targetPhi;
+    claw = _targetClaw;
+    _hasNewCommand = false;  // Reset flag after reading
+    return true;
   }
 
-bool RobotWebServer::getManualAngles(float &turret, float &shoulder, float &elbow, float &wrist, float &claw)
-    {
-        turret   = _manualAngles.turret;
-        shoulder = _manualAngles.shoulder;
-        elbow    = _manualAngles.elbow;
-        wrist    = _manualAngles.wrist;
-        claw     = _manualAngles.claw;
-        bool hasNew = _hasNewManualCommand;
-        _hasNewManualCommand = false; 
-        return hasNew;
-    }
+  return false;
+}
 
-bool RobotWebServer::getRCInputs(RCInputs &outRC) 
-    {
-        if (_hasNewRC) 
-            {
-                _hasNewRC = false;
-                outRC = _rcInputs;
-                return true;
-            }
-        return false;
-    }
+bool RobotWebServer::getManualAngles(float &turret, float &shoulder, float &elbow, float &wrist, float &claw) {
+  turret = _manualAngles.turret;
+  shoulder = _manualAngles.shoulder;
+  elbow = _manualAngles.elbow;
+  wrist = _manualAngles.wrist;
+  claw = _manualAngles.claw;
+  bool hasNew = _hasNewManualCommand;
+  _hasNewManualCommand = false;
+  return hasNew;
+}
+
+bool RobotWebServer::getRCInputs(RCInputs &outRC) {
+  if (_hasNewRC) {
+    _hasNewRC = false;
+    outRC = _rcInputs;
+    return true;
+  }
+  return false;
+}
 
 // ----------------------------- CHECKING THINGS FROM WEB INTERFACE -----------------------------
 
-bool RobotWebServer::checkHomeRequest()
-  {
-    if (_homeRequested)
-      {
-        _homeRequested = false;
-        return true;
-      }
-    return false;
+bool RobotWebServer::checkHomeRequest() {
+  if (_homeRequested) {
+    _homeRequested = false;
+    return true;
   }
+  return false;
+}
 
-bool RobotWebServer::checkOpModeChanged(OpMode &newMode)
-  {
-    if (_opModeChanged)
-      {
-        newMode = _currentOpMode;
-        _opModeChanged = false;
-        return true;
-      }
-      return false;
+bool RobotWebServer::checkOpModeChanged(OpMode &newMode) {
+  if (_opModeChanged) {
+    newMode = _currentOpMode;
+    _opModeChanged = false;
+    return true;
   }
+  return false;
+}

@@ -28,6 +28,11 @@ class RobotWebServer
       void beginWebServer();
       void updateWebServer();
 
+      void setController(MovementControl* controller) 
+        { 
+          _controller = controller; 
+        }
+
       // INFO AND TELEMETRY
       void sendTelemetry(float x, float y, float z, float phi, float turretDeg, float shoulderDeg, float elbowDeg, float wristDeg, float clawDeg);
       void log(const String &message);

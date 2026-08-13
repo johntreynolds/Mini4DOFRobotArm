@@ -264,7 +264,6 @@ void MovementControl::emergencyStop()
 void MovementControl::releaseEStop()
   {
     _isEStopped = false;
-    pd.resetPDToHome();
   }
 
 void MovementControl::setOpMode(uint8_t mode)
@@ -405,10 +404,20 @@ bool MovementControl::manualAngleMove(float turret, float shoulder, float elbow,
 
 float MovementControl::applyDeadzone(float input) 
   {
-    if (abs(input) < _deadzone) {
-        return 0.0f;
+    const float dz = 0.12f;
+    float absVal = abs(input);
+    
+    if (absVal < dz) {
+      return 0.0f;
     }
-    return input;
+    
+    // Rescale linearly above deadzone threshold
+    float scaled = (absVal - dz) / (1.0f - dz);
+    
+    // Apply exponential curve for fine control near center
+    float expScaled = pow(scaled, 1.8f);
+    
+    return (input < 0.0f) ? -expScaled : expScaled;
   }
 
 void MovementControl::syncRCTargetsFromCurrentPose() 
@@ -421,8 +430,10 @@ void MovementControl::syncRCTargetsFromCurrentPose()
     targetClaw = angles.claw;
   }
 
-void MovementControl::handleRCCommand(const RCInputs& rc, float deltaTime) 
+void MovementControl::handleRCCommand(const RCInputs& rc) 
   {
+    const float dt = 0.020f;
+
     // 1. Immediate E-Stop Check ('B' Button)
     if (rc.btnEStop) 
       {
@@ -453,16 +464,16 @@ void MovementControl::handleRCCommand(const RCInputs& rc, float deltaTime)
 
     // 3. Process Analog Sticks (Left Stick: R/Z, Right Stick: Turret)
     float moveR      = applyDeadzone(rc.lx);
-    float moveZ      = applyDeadzone(rc.ly);
+    float moveZ      = -applyDeadzone(rc.ly);
     float moveTurret = applyDeadzone(rc.rx);
 
-    float speedR      = 80.0f; // mm / sec
-    float speedZ      = 80.0f; // mm / sec
-    float speedTurret = 60.0f; // deg / sec
+    float speedR      = 200.0f; // mm / sec
+    float speedZ      = 200.0f; // mm / sec
+    float speedTurret = 400.0f; // deg / sec
 
-    targetR      += moveR * speedR * deltaTime;
-    targetZ      += moveZ * speedZ * deltaTime;
-    targetThetaT += moveTurret * speedTurret * deltaTime;
+    targetR      += moveR * speedR * dt;
+    targetZ      += moveZ * speedZ * dt;
+    targetThetaT += moveTurret * speedTurret * dt;
 
     const float MIN_ARM_REACH_MM = 30.0f;
     const float MAX_ARM_REACH_MM = L1 + L2 + L3; // Set this below the physical limit where IK breaks
@@ -472,26 +483,26 @@ void MovementControl::handleRCCommand(const RCInputs& rc, float deltaTime)
     targetThetaT = constrain(targetThetaT, 0.0f, 180.0f);
 
     // 4. Process D-Pad for Pitch Angle (Phi)
-    float speedPhi = 45.0f; // deg / sec
+    float speedPhi = 100.0f; // deg / sec
     if (rc.dpadUp) 
       {
-        targetPhi += speedPhi * deltaTime;
+        targetPhi += speedPhi * dt;
       }
     if (rc.dpadDown) 
       {
-        targetPhi -= speedPhi * deltaTime;
+        targetPhi -= speedPhi * dt;
       }
     targetPhi = constrain(targetPhi, 0.0f, 180.0f);
 
     // 5. Process Triggers/Bumpers for Claw Differential
-    float speedClaw = 90.0f; // deg / sec
+    float speedClaw = 45.0f; // deg / sec
     if (rc.openClaw > 0.05f) 
       {
-        targetClaw -= rc.openClaw * speedClaw * deltaTime;
+        targetClaw -= rc.openClaw * speedClaw * dt;
       }
     if (rc.closeClaw > 0.05f) 
       {
-        targetClaw += rc.closeClaw * speedClaw * deltaTime;
+        targetClaw += rc.closeClaw * speedClaw * dt;
       }
     targetClaw = constrain(targetClaw, MIN_ANGLE[4], MAX_ANGLE[4]);
 
@@ -509,12 +520,21 @@ void MovementControl::handleRCCommand(const RCInputs& rc, float deltaTime)
         input.phi = targetPhi; 
         input.hasPhi = true;
 
+        /*
+        
+        turnServo(0, angles.turret);
+        turnServo(1, angles.shoulder);
+        turnServo(2, angles.elbow);
+        turnServo(3, angles.wrist);
+        
+        */
+
         pd.setTargetPD(0, angles.turret);
         pd.setTargetPD(1, angles.shoulder);
         pd.setTargetPD(2, angles.elbow);
         pd.setTargetPD(3, angles.wrist);
-
         moveAllServos();
+       
         turnServo(4, targetClaw); // Update claw
       }
     else

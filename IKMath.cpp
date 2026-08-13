@@ -222,7 +222,7 @@ IKStatus IKMath::validateAngles(const ArmAngles &a)
       {
         return IK_ELBOW_LIMIT;
       } 
-    if (a.wrist <= MIN_ANGLE[3] || a.wrist > MAX_ANGLE[3])
+    if (a.wrist < MIN_ANGLE[3] || a.wrist > MAX_ANGLE[3])
       {
         return IK_WRIST_LIMIT;
       } 
@@ -241,7 +241,7 @@ IKInput IKMath::solveFullArmDK(float thetaT, float theta1, float theta2, float t
     float elbowOffset = abs(elbowColinear - 90.0f);
     float alphaBeta = theta1 - shoulderOffset;
     float gamma = 270.0f - elbowOffset - theta2;
-    float gammaMini = alphaBeta + gamma - 180;
+    float gammaMini = alphaBeta + gamma - 180.0f;
 
     // Piece-by-piece math
     float ze = sin(alphaBeta * DEG_TO_RAD) * L1;
@@ -256,7 +256,7 @@ IKInput IKMath::solveFullArmDK(float thetaT, float theta1, float theta2, float t
     float delta = 180.0f - gamma - beta;
     float phi = theta3 - delta - chi + 90.0f;
 
-    float z = zw + cos(phi * DEG_TO_RAD) * L3;
+    float z = zw - cos(phi * DEG_TO_RAD) * L3;
     float r = rw + sin(phi * DEG_TO_RAD) *L3;
 
     float x = r * cos(thetaT * DEG_TO_RAD);

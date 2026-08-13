@@ -26,7 +26,11 @@ void setup()
 
     //Robot Arm Begin
     controller.begin(50);
+    Wire.setClock(400000);
     controller.homeArm();
+
+    // E STOP CONTROLLER
+    webServer.setController(&controller);
 
     //Web Server Begin
     webServer.beginWebServer();
@@ -85,15 +89,23 @@ void loop()
           {
             static unsigned long lastTime = 0;
             unsigned long now = millis();
+            if (lastTime == 0) 
+              {
+                lastTime = now;
+              }
             float deltaTime = (now - lastTime) / 1000.0f;
             lastTime = now;
+
+            if (deltaTime > 0.05f) 
+              {
+                deltaTime = 0.05f;
+              }
 
             RCInputs rc;
             if (webServer.getRCInputs(rc))
               {
-                controller.handleRCCommand(rc, deltaTime);
+                controller.handleRCCommand(rc);
               }
-            controller.handleRCCommand(rc, deltaTime);
             break;
           }
 
@@ -109,12 +121,34 @@ void loop()
           }
     }
 
+    static unsigned long lastServoUpdate = 0;
+    unsigned long currentMillis = millis();
+
+    // Step PD controller and update physical PCA9685 servos at steady 50 Hz
+    if (currentMillis - lastServoUpdate >= 20) 
+      {
+        lastServoUpdate = currentMillis;
+
+        // Drive PD virtual angles to physical outputs (except raw manual angle testing)
+        if (currentMode != RobotWebServer::OPMODE_ANGLE_TESTING)
+          {
+            controller.moveAllServos();
+          }
+      }
+    
+    
     // Send Telemetry to Board
     // SEND TELEMETRY TO WEB CLIENT
-    float curX, curY, curZ, curPhi;
-    float t, s, e, w, c;
-    controller.getCurrentPose(curX, curY, curZ, curPhi);
-    controller.getCurrentAngles(t, s, e, w, c);
+    static unsigned long lastTelemetry = 0;
+    if (currentMillis - lastTelemetry >= 50) 
+      {
+        lastTelemetry = currentMillis;
 
-    webServer.sendTelemetry(curX, curY, curZ, curPhi, t, s, e, w, c);
+        float curX, curY, curZ, curPhi;
+        float t, s, e, w, c;
+        controller.getCurrentPose(curX, curY, curZ, curPhi);
+        controller.getCurrentAngles(t, s, e, w, c);
+
+        webServer.sendTelemetry(curX, curY, curZ, curPhi, t, s, e, w, c);
+      }
   }

@@ -54,7 +54,7 @@ class MovementControl
             bool manualAngleMove(float turret, float shoulder, float elbow, float wrist, float claw);
 
             // SINGLE RC CONTROL METHOD
-            void handleRCCommand(const RCInputs& rc, float deltaTime);
+            void handleRCCommand(const RCInputs& rc);
             void syncRCTargetsFromCurrentPose();
 
             // CLAW CONTROl
