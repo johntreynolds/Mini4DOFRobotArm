@@ -37,5 +37,22 @@ struct IKInput
     float hasPhi;
   };
 
+struct RCInputs 
+  {
+    float lx;         // Left stick X (-1.0 R In, +1.0 R Out)
+    float ly;         // Left stick Y (+1.0 Z Up, -1.0 Z Down)
+    float rx;         // Right stick X (-1.0 Turret Left, +1.0 Turret Right)
+        
+    bool dpadUp;      // Phi Up
+    bool dpadDown;    // Phi Down
+        
+    float openClaw;   // Left trigger/bumper (0.0 to 1.0)
+    float closeClaw;  // Right trigger/bumper (0.0 to 1.0)
+        
+    bool btnHome;     // 'X' Button
+    bool btnEStop;    // 'B' Button
+  };
+
+
 #endif
 

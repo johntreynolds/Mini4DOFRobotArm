@@ -28,6 +28,7 @@ void PIDMath::pdServoMath(int channel)
     if (fabs(error) < ALLOWABLE_DEADZONE[channel])
       {
         lastError[channel] = 0;
+        lastTime[channel] = micros();   // <-- goes here, right alongside lastError reset
         return;
       }
 
