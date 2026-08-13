@@ -17,7 +17,7 @@ class IKMath
             IKInput solveFullArmDK(float thetaT, float theta1, float theta2, float theta3);
             ArmAngles manualComputeRZ(float turret, float r, float z, float phi);
             void processIKSerial();
-            IKStatus validateAngles(const ArmAngles &a);
+            IKStatus validation(float x, float y, float z, const ArmAngles &a);
             
         private:
             

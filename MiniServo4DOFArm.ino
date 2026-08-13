@@ -40,6 +40,7 @@ void loop()
   {
     // WEB SERVER UPDATES
     webServer.updateWebServer();
+    webServer.updateTelemetry();
 
     if (controller.isEStopped()) 
       {
@@ -64,7 +65,7 @@ void loop()
     // Process OpModes and Motion Commands
     
     switch (currentMode) 
-    {
+      {
         case RobotWebServer::OPMODE_MANUAL_XYZ: 
           {
             float targetX, targetY, targetZ, targetPhi, targetClaw;
@@ -87,20 +88,6 @@ void loop()
 
         case RobotWebServer::OPMODE_REMOTE_CONTROL: 
           {
-            static unsigned long lastTime = 0;
-            unsigned long now = millis();
-            if (lastTime == 0) 
-              {
-                lastTime = now;
-              }
-            float deltaTime = (now - lastTime) / 1000.0f;
-            lastTime = now;
-
-            if (deltaTime > 0.05f) 
-              {
-                deltaTime = 0.05f;
-              }
-
             RCInputs rc;
             if (webServer.getRCInputs(rc))
               {
@@ -119,36 +106,7 @@ void loop()
               }
             break;
           }
-    }
-
-    static unsigned long lastServoUpdate = 0;
-    unsigned long currentMillis = millis();
-
-    // Step PD controller and update physical PCA9685 servos at steady 50 Hz
-    if (currentMillis - lastServoUpdate >= 20) 
-      {
-        lastServoUpdate = currentMillis;
-
-        // Drive PD virtual angles to physical outputs (except raw manual angle testing)
-        if (currentMode != RobotWebServer::OPMODE_ANGLE_TESTING)
-          {
-            controller.moveAllServos();
-          }
       }
-    
-    
-    // Send Telemetry to Board
-    // SEND TELEMETRY TO WEB CLIENT
-    static unsigned long lastTelemetry = 0;
-    if (currentMillis - lastTelemetry >= 50) 
-      {
-        lastTelemetry = currentMillis;
 
-        float curX, curY, curZ, curPhi;
-        float t, s, e, w, c;
-        controller.getCurrentPose(curX, curY, curZ, curPhi);
-        controller.getCurrentAngles(t, s, e, w, c);
-
-        webServer.sendTelemetry(curX, curY, curZ, curPhi, t, s, e, w, c);
-      }
+    controller.timingServoUpdate();
   }

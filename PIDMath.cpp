@@ -25,6 +25,13 @@ void PIDMath::pdServoMath(int channel)
     //Find where we are and how far we need to go
     float error = targetAngle[channel] - virtualAngle[channel];
 
+    // Ignore microscopic error to prevent idle hunting
+    if (abs(error) < 1.0f)
+      {
+        error = 0.0f;
+        lastError[channel] = 0.0f;
+      }
+
     if (fabs(error) < ALLOWABLE_DEADZONE[channel])
       {
         lastError[channel] = 0;
