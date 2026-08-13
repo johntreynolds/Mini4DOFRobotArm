@@ -339,8 +339,6 @@ const rcPayload = {
     clawPct: clawPct,
     dpadUp: dUp,
     dpadDown: dDown,
-    btnHome: gp.buttons[9] ? gp.buttons[9].pressed : false,   // adjust indices to your pad
-    btnEStop: gp.buttons[8] ? gp.buttons[8].pressed : false,
     openClaw: rtVal,
     closeClaw: ltVal
 };
@@ -539,19 +537,6 @@ void RobotWebServer::onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *cli
         rc.dpadDown = (getJsonVal("\"dpadDown\"") > 0.5f);
         rc.openClaw = getJsonVal("\"openClaw\"");
         rc.closeClaw = getJsonVal("\"closeClaw\"");
-        rc.btnHome = (getJsonVal("\"btnHome\"") > 0.5f);
-        rc.btnEStop = (getJsonVal("\"btnEStop\"") > 0.5f);
-
-        // Immediate hard-stop if E-Stop button pressed on Gamepad
-        if (rc.btnEStop && _controller) {
-          _controller->emergencyStop();
-        }
-
-        // Forward claw percent directly to controller if provided
-        float clawPct = getJsonVal("\"clawPct\"");
-        if (_controller && (rc.openClaw > 0.0f || rc.closeClaw > 0.0f)) {
-          _controller->moveClaw(clawPct);
-        }
 
         _rcInputs = rc;
         _hasNewRC = true;
@@ -672,6 +657,30 @@ void RobotWebServer::logf(const char *format, ...) {
 
   log(String(buffer));
 }
+
+void RobotWebServer::updateTelemetry() 
+  {
+    // Safety check: ensure controller pointer is valid
+    if (!_controller) return;
+
+    unsigned long currentMillis = millis();
+
+    // 20 Hz Telemetry Update (every 50ms)
+    if (currentMillis - _lastTelemetry >= 50) 
+      {
+        _lastTelemetry = currentMillis;
+
+        float curX, curY, curZ, curPhi;
+        float t, s, e, w, c;
+
+        // Pull current telemetry directly from the controller reference
+        _controller->getCurrentPose(curX, curY, curZ, curPhi);
+        _controller->getCurrentAngles(t, s, e, w, c);
+
+        // Send over WebSocket connection
+        sendTelemetry(curX, curY, curZ, curPhi, t, s, e, w, c);
+      }
+  }
 
 // --------------------------- NEW TARGET --------------------------------
 

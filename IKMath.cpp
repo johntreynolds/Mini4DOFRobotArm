@@ -200,8 +200,15 @@ ArmAngles IKMath::manualComputeRZ(float turret, float r, float z, float phi)
     return targetAngles;  
   }
 
-IKStatus IKMath::validateAngles(const ArmAngles &a)
+IKStatus IKMath::validation(float x, float y, float z, const ArmAngles &a)
   {
+    //Cartesian Errors
+    if (x < MIN_X || x > MAX_X || y < MIN_Y || y > MAX_Y || z < MIN_Z || z > MAX_Z)
+      {
+        return IK_XYZ_LIMIT;
+      }
+
+    // Strut Dist Errors
     if (a.status == IK_TOO_FAR)
       {
         return IK_TOO_FAR;
@@ -210,6 +217,8 @@ IKStatus IKMath::validateAngles(const ArmAngles &a)
       {
         return IK_TOO_CLOSE;
       }
+    
+    // Angle Errors
     if (a.turret < MIN_ANGLE[0] || a.turret > MAX_ANGLE[0])
       {
         return IK_TURRET_LIMIT;

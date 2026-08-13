@@ -11,7 +11,8 @@ enum IKStatus
       IK_WRIST_LIMIT,     //Error Code 3
       IK_TOO_FAR,         //Error Code 4
       IK_TOO_CLOSE,       //Error Code 5
-      IK_OK               
+      IK_XYZ_LIMIT,       //Error Code 6
+      IK_OK              
   };
 
 struct ArmAngles
@@ -48,9 +49,6 @@ struct RCInputs
         
     float openClaw;   // Left trigger/bumper (0.0 to 1.0)
     float closeClaw;  // Right trigger/bumper (0.0 to 1.0)
-        
-    bool btnHome;     // 'X' Button
-    bool btnEStop;    // 'B' Button
   };
 
 

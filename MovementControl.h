@@ -44,9 +44,6 @@ class MovementControl
             //void manualIKTest();
             //void telemetry();
 
-            // TO BE COMPLETED
-            bool rotateAroundXYZ(float x, float y, float z, float phiMin, float phiMax);
-
             // OPMODE HANDLING
             bool manualCompute(float x, float y, float z, float phi);
             bool runManualXYZ(float x, float y, float z, float phi, float clawPercent);
@@ -56,6 +53,8 @@ class MovementControl
             // SINGLE RC CONTROL METHOD
             void handleRCCommand(const RCInputs& rc);
             void syncRCTargetsFromCurrentPose();
+
+            void timingServoUpdate();
 
             // CLAW CONTROl
             void moveClaw(float percent);
@@ -79,11 +78,11 @@ class MovementControl
             float _deadzone = 0.1f;
             float applyDeadzone(float input);
 
-            float targetR = 100;
-            float targetZ = 100;
+            float targetR      = 100;
+            float targetZ      = 100;
             float targetThetaT = 90;
-            float targetPhi = 90;
-            float targetClaw = 180;
+            float targetPhi    = 90;
+            float targetClaw   = 180;
 
     };
 

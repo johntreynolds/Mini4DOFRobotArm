@@ -34,7 +34,7 @@ void MovementControl::homeArm()
       {
         turnServo(i, HOMING[i]);
       } 
-    
+    syncRCTargetsFromCurrentPose();
     webServer.sendTelemetry(input.x, input.y, input.z, input.phi, angles.turret, angles.shoulder, angles.elbow, angles.wrist, angles.claw);
     webServer.log("Robot Homed");
   }
@@ -88,7 +88,9 @@ void MovementControl::telemetry()
 bool MovementControl::processIKSerial()
   {
     if (!Serial.available())
+      {
         return false;
+      }
 
     // Read full line
     String line = Serial.readStringUntil('\n');
@@ -106,7 +108,7 @@ bool MovementControl::processIKSerial()
 
     int start = 0;
     while (count < 4)
-    {
+      {
         int spaceIndex = line.indexOf(' ', start);
 
         String token;
@@ -118,24 +120,26 @@ bool MovementControl::processIKSerial()
         token.trim();
 
         if (token.length() > 0)
-        {
+          {
             values[count] = token.toFloat();
             count++;
-        }
+          }
 
         if (spaceIndex == -1)
+          {
             break;
+          }
 
         start = spaceIndex + 1;
-    }
+      }
 
     if (count != 3 && count != 4)
-    {
+      {
         Serial.print("Parse error: got ");
         Serial.print(count);
         Serial.println(" values");
         return false;
-    }
+      }
 
     input.x = values[0];
     input.y = values[1];
@@ -154,7 +158,9 @@ bool MovementControl::processIKSerial()
 void MovementControl::manualIKTest()
   {
     if (!processIKSerial())
+      {
         return;
+      }
     if (input.hasPhi)
       {
         angles = ik.solveFullArmPhi(input.x, input.y, input.z, input.phi);
@@ -163,7 +169,7 @@ void MovementControl::manualIKTest()
       {
         angles = ik.solveFullArmVert(input.x, input.y, input.z);
       }
-    IKStatus status = ik.validateAngles(angles);
+    IKStatus status = ik.validateAngles(input.x, input.y, input.z, angles);
     if (status != IK_OK)
       {
           Serial.print("IK ERROR: ");
@@ -302,22 +308,17 @@ void MovementControl::getCurrentAngles(float &turret, float &shoulder, float &el
 void MovementControl::moveClaw(float percent)
   {
     percent = constrain(percent, 0.0f, 100.0f);
-    float clawAngle = map(percent, 0.0f, 100.0f, MAX_ANGLE[4], MIN_ANGLE[4]);
+    float clawAngle = MAX_ANGLE[4] - (percent / 100.0f) * (MAX_ANGLE[4] - MIN_ANGLE[4]);
     angles.claw = clawAngle;
     turnServo(4, clawAngle);
   }
 
 // ----------------------------------- OPMODES ----------------------------------------
 
-bool MovementControl::rotateAroundXYZ(float x, float y, float z, float phiMin, float phiMax)
-  {
-    
-  }
-
 bool MovementControl::manualCompute(float x, float y, float z, float phi)
   {
     ArmAngles targetAngles = ik.solveFullArmPhi(x, y, z, phi);
-    IKStatus status = ik.validateAngles(targetAngles);
+    IKStatus status = ik.validation(x, y, z, targetAngles);
     if (status != IK_OK)
       {
         webServer.logf("[IK ERROR] Manual XYZ target (%.1f, %.1f, %.1f) unreachable! Code: %d\n", 
@@ -407,9 +408,10 @@ float MovementControl::applyDeadzone(float input)
     const float dz = 0.12f;
     float absVal = abs(input);
     
-    if (absVal < dz) {
-      return 0.0f;
-    }
+    if (absVal < dz) 
+      {
+        return 0.0f;
+      }
     
     // Rescale linearly above deadzone threshold
     float scaled = (absVal - dz) / (1.0f - dz);
@@ -434,42 +436,23 @@ void MovementControl::handleRCCommand(const RCInputs& rc)
   {
     const float dt = 0.020f;
 
-    // 1. Immediate E-Stop Check ('B' Button)
-    if (rc.btnEStop) 
-      {
-        emergencyStop();
-        return;
-      }
-
-    if (_isEStopped || _currentOpMode != RobotWebServer::OPMODE_REMOTE_CONTROL) 
+    if (_currentOpMode != RobotWebServer::OPMODE_REMOTE_CONTROL) 
       { 
         return;
       }
 
-    // 2. Home Arm Check ('X' Button)
-    if (rc.btnHome) 
-      {
-        homeArm();
-        syncRCTargetsFromCurrentPose(); // Keep RC targets aligned with home pose
-        return;
-      }
-
-    // =========================================================================
-    // STEP A: Store current targets before applying joystick increments
-    // =========================================================================
     float prevTargetR      = targetR;
     float prevTargetZ      = targetZ;
     float prevTargetThetaT = targetThetaT;
     float prevTargetPhi    = targetPhi;
 
-    // 3. Process Analog Sticks (Left Stick: R/Z, Right Stick: Turret)
     float moveR      = applyDeadzone(rc.lx);
     float moveZ      = -applyDeadzone(rc.ly);
     float moveTurret = applyDeadzone(rc.rx);
 
-    float speedR      = 200.0f; // mm / sec
-    float speedZ      = 200.0f; // mm / sec
-    float speedTurret = 400.0f; // deg / sec
+    float speedR      = 150.0f; // mm / sec
+    float speedZ      = 150.0f; // mm / sec
+    float speedTurret = 200.0f; // deg / sec
 
     targetR      += moveR * speedR * dt;
     targetZ      += moveZ * speedZ * dt;
@@ -482,8 +465,7 @@ void MovementControl::handleRCCommand(const RCInputs& rc)
     targetZ      = constrain(targetZ, -100.0f, 180.0f);
     targetThetaT = constrain(targetThetaT, 0.0f, 180.0f);
 
-    // 4. Process D-Pad for Pitch Angle (Phi)
-    float speedPhi = 100.0f; // deg / sec
+    float speedPhi = 60.0f; // deg / sec
     if (rc.dpadUp) 
       {
         targetPhi += speedPhi * dt;
@@ -494,26 +476,30 @@ void MovementControl::handleRCCommand(const RCInputs& rc)
       }
     targetPhi = constrain(targetPhi, 0.0f, 180.0f);
 
-    // 5. Process Triggers/Bumpers for Claw Differential
-    float speedClaw = 45.0f; // deg / sec
-    if (rc.openClaw > 0.05f) 
+    float speedClaw = 145.0f; // deg / sec
+    float openCmd  = applyDeadzone(rc.openClaw);
+    float closeCmd = applyDeadzone(rc.closeClaw);
+
+    if (openCmd > 0.0f) 
       {
-        targetClaw -= rc.openClaw * speedClaw * dt;
+        targetClaw -= openCmd * speedClaw * dt;
       }
-    if (rc.closeClaw > 0.05f) 
+    if (closeCmd > 0.0f) 
       {
-        targetClaw += rc.closeClaw * speedClaw * dt;
+        targetClaw += closeCmd * speedClaw * dt;
       }
     targetClaw = constrain(targetClaw, MIN_ANGLE[4], MAX_ANGLE[4]);
 
-    // 6. Compute Cylindrical IK directly via IKMath instance
     ArmAngles targetAngles = ik.manualComputeRZ(targetThetaT, targetR, targetZ, targetPhi);
+    float thetaRad = targetThetaT * (PI / 180.0f);
+    float targetX = targetR * cos(thetaRad);
+    float targetY = targetR * sin(thetaRad);
 
-    // 7. Validate & Execute
-    IKStatus status = ik.validateAngles(targetAngles);
+    IKStatus status = ik.validation(targetX, targetY, targetZ, targetAngles);
     if (status == IK_OK)
       {
         angles = targetAngles;
+        angles.claw = targetClaw;
         input.x = targetR; 
         input.y = 0.0f; 
         input.z = targetZ; 
@@ -526,16 +512,15 @@ void MovementControl::handleRCCommand(const RCInputs& rc)
         turnServo(1, angles.shoulder);
         turnServo(2, angles.elbow);
         turnServo(3, angles.wrist);
-        
+        turnServo(4, targetClaw);
+
         */
 
         pd.setTargetPD(0, angles.turret);
         pd.setTargetPD(1, angles.shoulder);
         pd.setTargetPD(2, angles.elbow);
         pd.setTargetPD(3, angles.wrist);
-        moveAllServos();
-       
-        turnServo(4, targetClaw); // Update claw
+        pd.setTargetPD(4, angles.claw);
       }
     else
       {
@@ -544,10 +529,27 @@ void MovementControl::handleRCCommand(const RCInputs& rc)
         // =========================================================================
         targetR      = prevTargetR;
         targetZ      = prevTargetZ;
-        targetThetaT = prevTargetThetaT;
+        targetThetaT = prevTargetThetaT;  
         targetPhi    = prevTargetPhi;
 
-        webServer.logf("[IK ERROR] Target (T=%.1f, R=%.1f, Z=%.1f) unreachable! Code: %d\n", 
-                       targetThetaT, targetR, targetZ, status);
+        webServer.logf("[IK ERROR] Target (T=%.1f, R=%.1f, Z=%.1f) unreachable! Code: %d\n", targetThetaT, targetR, targetZ, status);
+      }
+  }
+
+void MovementControl::timingServoUpdate()
+  {
+    static unsigned long lastServoUpdate = 0;
+    unsigned long currentMillis = millis();
+
+    // Step PD controller and update physical PCA9685 servos at steady 50 Hz
+    if (currentMillis - lastServoUpdate >= 20) 
+      {
+        lastServoUpdate = currentMillis;
+
+        // Drive PD virtual angles to physical outputs (except raw manual angle testing)
+        if (_currentOpMode != static_cast<uint8_t>(RobotWebServer::OPMODE_ANGLE_TESTING))
+          {
+            moveAllServos();
+          }
       }
   }
