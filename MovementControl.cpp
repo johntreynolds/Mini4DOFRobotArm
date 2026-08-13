@@ -88,7 +88,9 @@ void MovementControl::telemetry()
 bool MovementControl::processIKSerial()
   {
     if (!Serial.available())
+      {
         return false;
+      }
 
     // Read full line
     String line = Serial.readStringUntil('\n');
@@ -106,7 +108,7 @@ bool MovementControl::processIKSerial()
 
     int start = 0;
     while (count < 4)
-    {
+      {
         int spaceIndex = line.indexOf(' ', start);
 
         String token;
@@ -118,24 +120,26 @@ bool MovementControl::processIKSerial()
         token.trim();
 
         if (token.length() > 0)
-        {
+          {
             values[count] = token.toFloat();
             count++;
-        }
+          }
 
         if (spaceIndex == -1)
+          {
             break;
+          }
 
         start = spaceIndex + 1;
-    }
+      }
 
     if (count != 3 && count != 4)
-    {
+      {
         Serial.print("Parse error: got ");
         Serial.print(count);
         Serial.println(" values");
         return false;
-    }
+      }
 
     input.x = values[0];
     input.y = values[1];
@@ -154,7 +158,9 @@ bool MovementControl::processIKSerial()
 void MovementControl::manualIKTest()
   {
     if (!processIKSerial())
+      {
         return;
+      }
     if (input.hasPhi)
       {
         angles = ik.solveFullArmPhi(input.x, input.y, input.z, input.phi);
@@ -402,9 +408,10 @@ float MovementControl::applyDeadzone(float input)
     const float dz = 0.12f;
     float absVal = abs(input);
     
-    if (absVal < dz) {
-      return 0.0f;
-    }
+    if (absVal < dz) 
+      {
+        return 0.0f;
+      }
     
     // Rescale linearly above deadzone threshold
     float scaled = (absVal - dz) / (1.0f - dz);
@@ -443,9 +450,9 @@ void MovementControl::handleRCCommand(const RCInputs& rc)
     float moveZ      = -applyDeadzone(rc.ly);
     float moveTurret = applyDeadzone(rc.rx);
 
-    float speedR      = 200.0f; // mm / sec
-    float speedZ      = 200.0f; // mm / sec
-    float speedTurret = 400.0f; // deg / sec
+    float speedR      = 150.0f; // mm / sec
+    float speedZ      = 150.0f; // mm / sec
+    float speedTurret = 200.0f; // deg / sec
 
     targetR      += moveR * speedR * dt;
     targetZ      += moveZ * speedZ * dt;
@@ -458,7 +465,7 @@ void MovementControl::handleRCCommand(const RCInputs& rc)
     targetZ      = constrain(targetZ, -100.0f, 180.0f);
     targetThetaT = constrain(targetThetaT, 0.0f, 180.0f);
 
-    float speedPhi = 80.0f; // deg / sec
+    float speedPhi = 60.0f; // deg / sec
     if (rc.dpadUp) 
       {
         targetPhi += speedPhi * dt;
@@ -469,7 +476,7 @@ void MovementControl::handleRCCommand(const RCInputs& rc)
       }
     targetPhi = constrain(targetPhi, 0.0f, 180.0f);
 
-    float speedClaw = 45.0f; // deg / sec
+    float speedClaw = 145.0f; // deg / sec
     float openCmd  = applyDeadzone(rc.openClaw);
     float closeCmd = applyDeadzone(rc.closeClaw);
 
@@ -525,8 +532,7 @@ void MovementControl::handleRCCommand(const RCInputs& rc)
         targetThetaT = prevTargetThetaT;  
         targetPhi    = prevTargetPhi;
 
-        webServer.logf("[IK ERROR] Target (T=%.1f, R=%.1f, Z=%.1f) unreachable! Code: %d\n", 
-                       targetThetaT, targetR, targetZ, status);
+        webServer.logf("[IK ERROR] Target (T=%.1f, R=%.1f, Z=%.1f) unreachable! Code: %d\n", targetThetaT, targetR, targetZ, status);
       }
   }
 

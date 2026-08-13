@@ -78,11 +78,11 @@ class MovementControl
             float _deadzone = 0.1f;
             float applyDeadzone(float input);
 
-            float targetR = 100;
-            float targetZ = 100;
+            float targetR      = 100;
+            float targetZ      = 100;
             float targetThetaT = 90;
-            float targetPhi = 90;
-            float targetClaw = 180;
+            float targetPhi    = 90;
+            float targetClaw   = 180;
 
     };
 

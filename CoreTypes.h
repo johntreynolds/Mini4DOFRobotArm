@@ -11,7 +11,7 @@ enum IKStatus
       IK_WRIST_LIMIT,     //Error Code 3
       IK_TOO_FAR,         //Error Code 4
       IK_TOO_CLOSE,       //Error Code 5
-      IK_XYZ_LIMIT,
+      IK_XYZ_LIMIT,       //Error Code 6
       IK_OK              
   };
 

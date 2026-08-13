@@ -18,9 +18,6 @@ class IKMath
             ArmAngles manualComputeRZ(float turret, float r, float z, float phi);
             void processIKSerial();
             IKStatus validation(float x, float y, float z, const ArmAngles &a);
-            
-        private:
-            
     };
 
 #endif

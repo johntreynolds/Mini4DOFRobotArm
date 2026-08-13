@@ -16,10 +16,10 @@ class RobotWebServer
     public:
       enum OpMode 
         {
-          OPMODE_MANUAL_XYZ = 0,
-          OPMODE_LIVE_SLIDERS = 1,
+          OPMODE_MANUAL_XYZ     = 0,
+          OPMODE_LIVE_SLIDERS   = 1,
           OPMODE_REMOTE_CONTROL = 2,
-          OPMODE_ANGLE_TESTING = 3
+          OPMODE_ANGLE_TESTING  = 3
         };
 
       RobotWebServer(const char* ssid = "Mini4DOFRobotArm", const char* password = "ROBOT1234");
@@ -55,16 +55,16 @@ class RobotWebServer
       OpMode _currentOpMode = OPMODE_MANUAL_XYZ;
 
       // Target Storage
-      float _targetX = 0;
-      float _targetY = 100;
-      float _targetZ = 100;
-      float _targetPhi = 90;
+      float _targetX    = 0;
+      float _targetY    = 100;
+      float _targetZ    = 100;
+      float _targetPhi  = 90;
       float _targetClaw = 180;
 
       //Contol Flags
-      bool _hasNewCommand = false;
-      bool _homeRequested = false;
-      bool _opModeChanged = false;
+      bool _hasNewCommand       = false;
+      bool _homeRequested       = false;
+      bool _opModeChanged       = false;
       bool _hasNewManualCommand = false;
 
       ArmAngles _manualAngles;

@@ -37,49 +37,49 @@ void ServoTesting::manualTickStep()
     pwm.setPWM(servoArray[currentServo], 0, tick);
 
     while (true)
-    {
+      {
         if (Serial.available())
-        {
+          {
             char cmd = Serial.read();
 
             if (cmd == '+')
-            {
+              {
                 tick++;
                 if (tick > 4095) tick = 4095;
                 pwm.setPWM(servoArray[currentServo], 0, tick);
                 Serial.print("Tick: ");
                 Serial.println(tick);
-            }
+              }
             else if (cmd == '-')
-            {
+              {
                 tick--;
                 if (tick < 0) tick = 0;
                 pwm.setPWM(servoArray[currentServo], 0, tick);
                 Serial.print("Tick: ");
                 Serial.println(tick);
-            }
+              }
             else if (cmd == 'n')
-            {
+              {
                 currentServo++;
                 if (currentServo > 4)
-                {
+                  {
                     Serial.println("All servos done.");
                     break;
-                }
+                  }
 
                 Serial.print("Switching to servo ");
                 Serial.println(currentServo);
 
                 tick = 300; // reset to center
                 pwm.setPWM(servoArray[currentServo], 0, tick);
-            }
+              }
             else if (cmd == 'q')
-            {
+              {
                 Serial.println("Exiting manual tick mode.");
                 break;
-            }
+              }
         }
-    }
+      }
   }
 
 //---------------------------RUN TEXT CHANGES PROJECT------------------------------------------
@@ -118,7 +118,8 @@ void ServoTesting::readSerialCommands()
   {
     static bool hasRunOnce = false;
 
-    if (!hasRunOnce) {
+    if (!hasRunOnce) 
+      {
         //Test Instructions
         Serial.println("Select a number 1-5 to move the servos.");
         Serial.println("Type in format <Servor> <Angle>");
@@ -128,7 +129,7 @@ void ServoTesting::readSerialCommands()
         Serial.println("4. Wrist");
         Serial.println("5. Claw");
         hasRunOnce = true;
-    }
+      }
     if (Serial.available())
       {
         String line = Serial.readStringUntil('\n');
@@ -165,24 +166,29 @@ void ServoTesting::scanI2C()
     int nDevices = 0;
 
     for (address = 1; address < 127; address++)
-    {
+      {
         Wire.beginTransmission(address);
         error = Wire.endTransmission();
 
         if (error == 0)
-        {
+          {
             Serial.print("I2C device found at 0x");
             if (address < 16) Serial.print("0");
             Serial.println(address, HEX);
             nDevices++;
-        }
-    }
+          }
+      }
 
     if (nDevices == 0)
+      {
         Serial.println("No I2C devices found.");
+      }
+  
     else
+      {
         Serial.println("Scan complete.");
-
+      }
+        
     Serial.println("====================");
   }
   

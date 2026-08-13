@@ -6,12 +6,12 @@ void PIDMath::resetPDToHome()
   {
     unsigned long now = micros();
     for (int i = 0; i < 5; i++)
-    {
+      {
         virtualAngle[i] = HOMING[i];
         targetAngle[i]  = HOMING[i];
         lastError[i]    = 0;
         lastTime[i]     = now;
-    }
+      }
   }
 
 void PIDMath::setTargetPD(int channel, float angle)
