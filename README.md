@@ -11,7 +11,7 @@ The arm is controlled using an Inverse Kinematics algorithm in addition to a PD 
 
 An Arduino Nano Clone was used in the beginning of the project before I decided to switch to a board that could support Bluetooth an WIFI.
 
-The CAD model is provided in the main repository files.
+The CAD model won't be provided in the repository due to its large file size. If you somehow found this repository and want the model, do a pull request or something to let me know.
 
 <hr>
 
