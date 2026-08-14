@@ -30,7 +30,7 @@ The CAD model won't be provided in the repository due to its large file size. If
 
 The code opens a separate web interface that includes an E Stop, Homing Button, and Telemetry. 
 
-//Placeholder for top row of buttons and telemetry
+<img width="745" height="443" alt="RobotArmControlPanelIMG" src="https://github.com/user-attachments/assets/e7869e23-e256-4fda-8313-923cad597f98" />
 
 <hr>
 
@@ -38,25 +38,25 @@ The code opens a separate web interface that includes an E Stop, Homing Button, 
 
 Manual XYZ:
 
-//placeholder
+<img width="727" height="287" alt="ManualXYZInputIMG" src="https://github.com/user-attachments/assets/d0b351c5-d283-4f53-ae94-108b82c4ff45" />
 
 <hr>
 
 Live Sliders:
 
-//placeholder
+<img width="719" height="194" alt="LiveSlidersIMG" src="https://github.com/user-attachments/assets/80124dbd-56ec-4950-9501-f2b2100c6de8" />
 
 <hr>
 
 RC Control
 
-//placeholder
+<img width="720" height="407" alt="RemoteControllerIMG" src="https://github.com/user-attachments/assets/30c49fce-13de-4828-be3e-2394de1587ef" />
 
 <hr>
 
 Manual Angle.
 
-//placeholder
+<img width="716" height="281" alt="DirectAngleControlIMG" src="https://github.com/user-attachments/assets/1ddfe3c8-1c45-4e30-8ca3-96e1c13298a4" />
 
 <hr>
 
