@@ -1,4 +1,4 @@
-**4 Degree of Free Robot Arm**
+## **4 Degree of Free Robot Arm**
 
 <hr>
 
@@ -29,12 +29,15 @@ The CAD model won't be provided in the repository due to its large file size. If
 <hr>
 
 The code opens a separate web interface that includes an E Stop, Homing Button, and Telemetry. 
+There are also four OpModes that can be accessed in the web interface.
+
+<hr>
+
+Control Panel:
 
 <img width="745" height="443" alt="RobotArmControlPanelIMG" src="https://github.com/user-attachments/assets/e7869e23-e256-4fda-8313-923cad597f98" />
 
 <hr>
-
-**There are four OpModes that can be accessed in the web interface:**
 
 Manual XYZ:
 
@@ -48,13 +51,13 @@ Live Sliders:
 
 <hr>
 
-RC Control
+RC Control:
 
 <img width="720" height="407" alt="RemoteControllerIMG" src="https://github.com/user-attachments/assets/30c49fce-13de-4828-be3e-2394de1587ef" />
 
 <hr>
 
-Manual Angle.
+Manual Angle:
 
 <img width="716" height="281" alt="DirectAngleControlIMG" src="https://github.com/user-attachments/assets/1ddfe3c8-1c45-4e30-8ca3-96e1c13298a4" />
 
